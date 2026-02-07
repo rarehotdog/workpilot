@@ -1,181 +1,416 @@
+import { useState } from 'react';
 import { motion } from 'motion/react';
-import { Flame, CheckCircle2, Circle, Sparkles, ChevronRight } from 'lucide-react';
+import { Flame, Circle, CheckCircle2, Plus, ChevronRight, Sparkles, X } from 'lucide-react';
 import type { UserProfile, Quest } from '../../../App';
-import GitHubContributionChart from './widgets/GitHubContributionChart';
 
 interface HomeScreenProps {
   profile: UserProfile;
   quests: Quest[];
   onQuestToggle: (questId: string) => void;
+  onQuestFail?: (questId: string) => void;
   completionRate: number;
+  isGeneratingQuests?: boolean;
+  onRegenerateQuests?: () => void;
+  aiMessage?: string | null;
+  isAiEnabled?: boolean;
 }
 
 export default function HomeScreen({
   profile,
   quests,
   onQuestToggle,
+  onQuestFail,
   completionRate,
+  isGeneratingQuests,
+  onRegenerateQuests,
+  aiMessage,
+  isAiEnabled,
 }: HomeScreenProps) {
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return '좋은 아침이에요';
-    if (hour < 18) return '좋은 오후예요';
-    return '좋은 저녁이에요';
-  };
+  const today = new Date();
+  const dayOfWeek = ['일', '월', '화', '수', '목', '금', '토'][today.getDay()];
+  const completedCount = quests.filter(q => q.completed).length;
 
-  const getTimeIcon = (timeOfDay: Quest['timeOfDay']) => {
-    switch (timeOfDay) {
-      case 'morning':
-        return '🌅';
-      case 'afternoon':
-        return '☀️';
-      case 'evening':
-        return '🌙';
-    }
+  // Year progress
+  const startOfYear = new Date(today.getFullYear(), 0, 1);
+  const dayOfYear = Math.ceil((today.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24));
+  const totalDays = ((today.getFullYear() % 4 === 0) ? 366 : 365);
+  const yearProgress = ((dayOfYear / totalDays) * 100).toFixed(1);
+
+  // D-Day
+  const getDDay = () => {
+    if (!profile.deadline || profile.deadline === '무제한') return 'NaN';
+    const deadline = new Date(profile.deadline);
+    const diff = Math.ceil((deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    return diff > 0 ? `D-${diff}` : diff === 0 ? 'D-Day' : `D+${Math.abs(diff)}`;
   };
 
   return (
-    <div className="px-5 py-4">
-      {/* Header */}
-      <div className="mb-6">
-        <p className="text-gray-500 text-sm">{getGreeting()}</p>
-        <h1 className="text-2xl font-bold text-gray-900">{profile.name}님</h1>
+    <div className="px-5 pt-4 pb-6 bg-[#F9FAFB] min-h-screen">
+
+      {/* ── Header ── */}
+      <div className="flex items-start justify-between mb-4">
+        <div>
+          <h1 className="text-28 font-bold text-gray-900 tracking-tight-custom leading-tight">Daily</h1>
+          <p className="text-14 text-[#9CA3AF] mt-0.5">
+            {today.getMonth() + 1}월 {today.getDate()}일 ({dayOfWeek})
+          </p>
+        </div>
+        <button className="w-9 h-9 bg-white rounded-xl border border-[#E5E7EB] flex items-center justify-center mt-1">
+          <Plus className="w-[18px] h-[18px] text-gray-600" />
+        </button>
       </div>
 
-      {/* Stats Card */}
+      {/* ── Stats Row ── */}
+      <div className="grid grid-cols-3 gap-2.5 mb-4">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-blue-50 rounded-2xl p-14"
+        >
+          <p className="text-12 font-semibold text-blue-600 mb-1">Today</p>
+          <p className="text-22 font-bold text-gray-900 leading-none">{completedCount}/{quests.length}</p>
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.04 }}
+          className="bg-orange-50 rounded-2xl p-14"
+        >
+          <p className="text-12 font-semibold text-orange-600 mb-1">Streak</p>
+          <p className="text-22 font-bold text-gray-900 leading-none">{profile.streak} <span className="text-base">🔥</span></p>
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.08 }}
+          className="bg-purple-50 rounded-2xl p-14"
+        >
+          <p className="text-12 font-semibold text-purple-600 mb-1">D-Day</p>
+          <p className="text-22 font-bold text-gray-900 leading-none">{getDDay()}</p>
+        </motion.div>
+      </div>
+
+      {/* ── Year Progress ── */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-3xl p-5 mb-6 text-white"
+        transition={{ delay: 0.12 }}
+        className="bg-gradient-to-br from-fuchsia-400 via-pink-500 to-purple-500 rounded-3xl p-5 mb-4 text-white relative overflow-hidden"
       >
-        <div className="flex items-center justify-between mb-4">
+        {/* decorative circle */}
+        <div className="absolute -top-8 -right-8 w-36 h-36 bg-white/10 rounded-full" />
+
+        <div className="flex justify-between items-start mb-3 relative z-10">
           <div>
-            <p className="text-emerald-100 text-sm">Day {profile.currentDay}</p>
-            <p className="text-lg font-semibold">{profile.goal}</p>
+            <p className="text-15 font-semibold text-white/90">Year Progress</p>
+            <p className="text-13 text-white/60 mt-0.5">{today.getFullYear()}</p>
           </div>
-          <div className="flex items-center gap-1 bg-white/20 rounded-full px-3 py-1">
-            <Flame className="w-4 h-4 text-orange-300" />
-            <span className="font-bold">{profile.streak}</span>
+          <div className="text-right">
+            <p className="text-36 font-extrabold leading-none">{yearProgress}%</p>
+            <p className="text-13 text-white/60 mt-1">{dayOfYear}/{totalDays} days</p>
           </div>
         </div>
 
-        {/* Progress Bar */}
-        <div className="mb-2">
-          <div className="flex justify-between text-sm mb-1">
-            <span className="text-emerald-100">오늘의 진행률</span>
-            <span className="font-semibold">{Math.round(completionRate)}%</span>
+        {/* dot grid */}
+        <div className="flex flex-wrap gap-1 relative z-10">
+          {Array.from({ length: 52 }).map((_, i) => (
+            <div
+              key={i}
+              className={`w-1.5 h-1.5 rounded-full ${
+                i < Math.floor(dayOfYear / 7) ? 'bg-white' : 'bg-white/30'
+              }`}
+            />
+          ))}
+        </div>
+
+        {/* scroll indicator */}
+        <div className="flex justify-center mt-3 gap-1 relative z-10">
+          <div className="w-6 h-1 bg-white/60 rounded-full" />
+          <div className="w-1 h-1 bg-white/30 rounded-full" />
+          <div className="w-1 h-1 bg-white/30 rounded-full" />
+        </div>
+      </motion.div>
+
+      {/* ── Activity ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.18 }}
+        className="bg-white rounded-2xl p-4 border border-[#F3F4F6] mb-4"
+      >
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-base font-semibold text-gray-900">Activity</h3>
+          <div className="flex items-center gap-1 text-14 text-[#9CA3AF]">
+            <span>{profile.streak} day streak</span>
+            <Flame className="w-4 h-4 text-orange-500" />
           </div>
-          <div className="h-2 bg-white/20 rounded-full overflow-hidden">
+        </div>
+        <ActivityChart />
+      </motion.div>
+
+      {/* ── Today's Quest ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.24 }}
+        className="mb-4"
+      >
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-bold text-gray-900 tracking-snug">Today's Quest</h2>
+          <span className="text-14 text-[#9CA3AF]">{completedCount}/{quests.length} completed</span>
+        </div>
+
+        {isGeneratingQuests ? (
+          <div className="bg-white rounded-14 p-6 border border-[#F3F4F6] flex flex-col items-center">
+            <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin mb-3" />
+            <p className="text-13 text-[#9CA3AF]">AI가 퀘스트를 생성하고 있어요...</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {quests.map((quest, index) => (
+              <motion.div
+                key={quest.id}
+                initial={{ opacity: 0, x: -16 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.28 + index * 0.04 }}
+                onClick={() => onQuestToggle(quest.id)}
+                className={`bg-white rounded-14 p-4 border cursor-pointer active:scale-[0.98] transition-all ${
+                  quest.completed
+                    ? 'border-emerald-200 bg-emerald-50/40'
+                    : 'border-[#F3F4F6]'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className="mt-px">
+                    {quest.completed ? (
+                      <CheckCircle2 className="w-[22px] h-[22px] text-emerald-500" />
+                    ) : (
+                      <Circle className="w-[22px] h-[22px] text-gray-300" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-15 font-medium leading-snug ${quest.completed ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                      {quest.title}
+                    </p>
+                    {quest.description && (
+                      <p className="text-13 text-[#9CA3AF] mt-1 leading-relaxed">{quest.description}</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <span className="text-12 text-[#9CA3AF] bg-[#F3F4F6] px-2 py-1 rounded-lg">
+                      {quest.duration}
+                    </span>
+                    {!quest.completed && onQuestFail && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onQuestFail(quest.id); }}
+                        className="w-6 h-6 rounded-md bg-red-50 flex items-center justify-center hover:bg-red-100 transition-colors"
+                      >
+                        <X className="w-3 h-3 text-red-400" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+
+            {/* Add Quest */}
+            <button
+              onClick={isAiEnabled && onRegenerateQuests ? onRegenerateQuests : undefined}
+              className="w-full py-3 text-14 font-medium text-[#7C3AED] flex items-center justify-center gap-1.5 hover:bg-purple-50 rounded-14 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Add Quest
+            </button>
+          </div>
+        )}
+      </motion.div>
+
+      {/* ── Priority Matrix ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.32 }}
+        className="bg-white rounded-2xl p-4 border border-[#F3F4F6] mb-4"
+      >
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-base font-semibold text-gray-900">Priority Matrix</h3>
+          <button className="text-14 text-[#7C3AED] flex items-center gap-0.5 font-medium">
+            View All <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <PriorityCell
+            color="red"
+            label="Do First"
+            content={quests.filter(q => !q.completed && q.timeOfDay === 'morning')[0]?.title}
+          />
+          <PriorityCell
+            color="yellow"
+            label="Schedule"
+            content={quests.filter(q => !q.completed && q.timeOfDay === 'afternoon')[0]?.title}
+          />
+          <PriorityCell
+            color="green"
+            label="Delegate"
+            content={undefined}
+          />
+          <PriorityCell
+            color="gray"
+            label="Eliminate"
+            content={undefined}
+          />
+        </div>
+      </motion.div>
+
+      {/* ── Current Goal ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.38 }}
+        className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-3xl p-5 mb-4 text-white relative overflow-hidden"
+      >
+        <div className="absolute top-4 right-4 w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+          <span className="text-2xl">🎯</span>
+        </div>
+        <p className="text-12 text-white/70 font-medium mb-1">Current Goal</p>
+        <h3 className="text-22 font-bold leading-tight mb-4 pr-14">{profile.goal}</h3>
+
+        <div className="mb-2">
+          <div className="flex justify-between text-14 mb-1.5">
+            <span className="text-white/80">Progress</span>
+            <span className="font-semibold">{completionRate.toFixed(1)}%</span>
+          </div>
+          <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${completionRate}%` }}
-              transition={{ duration: 0.5, ease: 'easeOut' }}
+              transition={{ duration: 0.6 }}
               className="h-full bg-white rounded-full"
             />
           </div>
         </div>
 
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-emerald-100">예상 목표 달성</span>
-          <span className="font-medium">{profile.estimatedGoalDate}</span>
+        <div className="flex justify-between text-14 mt-3">
+          <span className="text-white/70">Day {profile.currentDay}</span>
+          <span className="text-white/70">{profile.deadline === '무제한' ? '무제한' : getDDay()}</span>
         </div>
       </motion.div>
 
-      {/* GitHub-style Contribution Chart */}
+      {/* ── AI Insight ── */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="bg-white rounded-2xl p-4 border border-gray-100 mb-6"
-      >
-        <h3 className="font-semibold text-gray-900 mb-3">활동 기록</h3>
-        <GitHubContributionChart />
-      </motion.div>
-
-      {/* Today's Quests */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-gray-900">오늘의 퀘스트</h2>
-          <span className="text-sm text-gray-500">
-            {quests.filter((q) => q.completed).length}/{quests.length} 완료
-          </span>
-        </div>
-
-        <div className="space-y-3">
-          {quests.map((quest, index) => (
-            <motion.div
-              key={quest.id}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.1 }}
-              onClick={() => onQuestToggle(quest.id)}
-              className={`bg-white rounded-2xl p-4 border-2 transition-all cursor-pointer active:scale-[0.98] ${
-                quest.completed
-                  ? 'border-emerald-200 bg-emerald-50/50'
-                  : 'border-gray-100 hover:border-emerald-200'
-              }`}
-            >
-              <div className="flex items-start gap-3">
-                <div className="pt-0.5">
-                  {quest.completed ? (
-                    <CheckCircle2 className="w-6 h-6 text-emerald-500" />
-                  ) : (
-                    <Circle className="w-6 h-6 text-gray-300" />
-                  )}
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span>{getTimeIcon(quest.timeOfDay)}</span>
-                    <span
-                      className={`font-medium ${
-                        quest.completed ? 'text-gray-400 line-through' : 'text-gray-900'
-                      }`}
-                    >
-                      {quest.title}
-                    </span>
-                  </div>
-                  {quest.description && (
-                    <p className="text-sm text-gray-500 mb-2">{quest.description}</p>
-                  )}
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
-                      {quest.duration}
-                    </span>
-                    {quest.alternative && !quest.completed && (
-                      <span className="text-xs text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-                        대체: {quest.alternative}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <ChevronRight className="w-5 h-5 text-gray-300" />
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-
-      {/* AI Tip */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-2xl p-4 border border-purple-100"
+        transition={{ delay: 0.44 }}
+        className="bg-white rounded-2xl p-4 border border-[#E9D5FF]"
       >
         <div className="flex items-start gap-3">
-          <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-xl flex items-center justify-center">
+          <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-[10px] flex items-center justify-center flex-shrink-0">
             <Sparkles className="w-4 h-4 text-white" />
           </div>
-          <div>
-            <p className="font-medium text-gray-900 mb-1">AI 인사이트</p>
-            <p className="text-sm text-gray-600">
-              {profile.streak > 0
-                ? `${profile.streak}일 연속 달성 중이에요! 이 페이스면 목표에 더 빨리 도달할 수 있어요.`
-                : '오늘 첫 퀘스트를 완료하고 스트릭을 시작해보세요!'}
+          <div className="min-w-0">
+            <p className="text-15 font-semibold text-gray-900 mb-1">AI Insight</p>
+            <p className="text-13 text-[#6B7280] leading-relaxed">
+              {aiMessage || (profile.streak > 0
+                ? `어제 스트릭칭을 건너뛰셨네요. 오늘은 자세 교정이 우선입니다. 작은 행동이 큰 변화로 이어갑니다! 💪`
+                : '오늘 첫 퀘스트를 완료하고 스트릭을 시작해보세요! 작은 시작이 큰 변화의 첫걸음이에요.')}
             </p>
           </div>
         </div>
       </motion.div>
+    </div>
+  );
+}
+
+/* ── Priority Cell ── */
+function PriorityCell({ color, label, content }: { color: string; label: string; content?: string }) {
+  const styles: Record<string, { bg: string; dot: string; text: string }> = {
+    red:    { bg: 'bg-red-50',    dot: '🔴', text: 'text-red-600' },
+    yellow: { bg: 'bg-yellow-50', dot: '🟡', text: 'text-yellow-600' },
+    green:  { bg: 'bg-green-50',  dot: '🟢', text: 'text-green-600' },
+    gray:   { bg: 'bg-gray-50',   dot: '⚫', text: 'text-gray-500' },
+  };
+  const s = styles[color] || styles.gray;
+
+  return (
+    <div className={`${s.bg} rounded-xl p-3`}>
+      <p className={`text-12 font-semibold ${s.text} mb-1`}>{s.dot} {label}</p>
+      <p className="text-12 text-[#6B7280]">
+        {content ? `• ${content}` : '• Empty'}
+      </p>
+    </div>
+  );
+}
+
+/* ── Activity Chart ── */
+function ActivityChart() {
+  const months = ['Jan', 'Feb', 'Mar'];
+  const generateData = () => {
+    const data: number[][] = [];
+    for (let w = 0; w < 12; w++) {
+      const week: number[] = [];
+      for (let d = 0; d < 7; d++) {
+        const chance = 0.3 + (w / 12) * 0.4;
+        week.push(Math.random() < chance ? Math.floor(Math.random() * 4) + 1 : 0);
+      }
+      data.push(week);
+    }
+    return data;
+  };
+
+  const [data] = useState(generateData);
+
+  const getColor = (v: number) => {
+    if (v === 0) return 'bg-gray-100';
+    if (v === 1) return 'bg-emerald-200';
+    if (v === 2) return 'bg-emerald-300';
+    if (v === 3) return 'bg-emerald-400';
+    return 'bg-emerald-500';
+  };
+
+  return (
+    <div>
+      {/* Month labels */}
+      <div className="flex mb-1.5 ml-5 text-11 text-[#9CA3AF]" style={{ gap: '28px' }}>
+        {months.map(m => <span key={m}>{m}</span>)}
+      </div>
+
+      <div className="flex" style={{ gap: '3px' }}>
+        {/* Day labels */}
+        <div className="flex flex-col text-11 text-[#9CA3AF] mr-1" style={{ gap: '3px' }}>
+          <span className="h-3.5 leading-[14px]">M</span>
+          <span className="h-3.5 leading-[14px]"></span>
+          <span className="h-3.5 leading-[14px]">W</span>
+          <span className="h-3.5 leading-[14px]"></span>
+          <span className="h-3.5 leading-[14px]">F</span>
+          <span className="h-3.5 leading-[14px]"></span>
+          <span className="h-3.5 leading-[14px]"></span>
+        </div>
+
+        {/* Grid */}
+        <div className="flex" style={{ gap: '3px' }}>
+          {data.map((week, wi) => (
+            <div key={wi} className="flex flex-col" style={{ gap: '3px' }}>
+              {week.map((v, di) => (
+                <div
+                  key={`${wi}-${di}`}
+                  className={`w-3.5 h-3.5 rounded-[3px] ${getColor(v)}`}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Legend */}
+      <div className="flex items-center justify-between mt-3 text-11 text-[#9CA3AF]">
+        <span>Less</span>
+        <div className="flex" style={{ gap: '3px' }}>
+          {[0, 1, 2, 3, 4].map(l => (
+            <div key={l} className={`w-3.5 h-3.5 rounded-[3px] ${getColor(l)}`} />
+          ))}
+        </div>
+        <span>More</span>
+      </div>
     </div>
   );
 }

@@ -20,7 +20,6 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Hide scrollbar for mobile feel */
 ::-webkit-scrollbar {
   display: none;
 }
@@ -29,7 +28,6 @@ body {
   scrollbar-width: none;
 }
 
-/* Input zoom prevention on iOS */
 input, textarea, select {
   font-size: 16px;
 }
@@ -38,7 +36,6 @@ input:focus, textarea:focus, select:focus {
   outline: none;
 }
 
-/* Touch feedback */
 button, a {
   transition: transform 0.1s ease, opacity 0.1s ease;
 }
@@ -47,6 +44,32 @@ button:active, a:active {
   transform: scale(0.98);
 }
 
+/* --- Design Token Utilities --- */
+
+/* Tracking */
+.tracking-tight-custom {
+  letter-spacing: -0.5px;
+}
+.tracking-snug {
+  letter-spacing: -0.3px;
+}
+
+/* Font sizes matching Figma */
+.text-28 { font-size: 28px; }
+.text-22 { font-size: 22px; }
+.text-36 { font-size: 36px; }
+.text-15 { font-size: 15px; }
+.text-14 { font-size: 14px; }
+.text-13 { font-size: 13px; }
+.text-12 { font-size: 12px; }
+.text-11 { font-size: 11px; }
+
+/* Custom padding */
+.p-14 { padding: 14px; }
+
+/* Custom rounded */
+.rounded-14 { border-radius: 14px; }
+
 /* Animations */
 @keyframes fadeIn {
   from { opacity: 0; }
@@ -54,14 +77,8 @@ button:active, a:active {
 }
 
 @keyframes slideUp {
-  from { 
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to { 
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes pulse {
@@ -69,48 +86,14 @@ button:active, a:active {
   50% { opacity: 0.5; }
 }
 
-@keyframes bounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
-}
+.animate-fadeIn { animation: fadeIn 0.3s ease; }
+.animate-slideUp { animation: slideUp 0.4s ease; }
+.animate-pulse { animation: pulse 2s ease-in-out infinite; }
 
-.animate-fadeIn {
-  animation: fadeIn 0.3s ease;
-}
-
-.animate-slideUp {
-  animation: slideUp 0.4s ease;
-}
-
-.animate-pulse {
-  animation: pulse 2s ease-in-out infinite;
-}
-
-.animate-bounce {
-  animation: bounce 1s ease-in-out infinite;
-}
-
-/* Safe area for mobile */
+/* Safe area */
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
-  .safe-bottom {
-    padding-bottom: env(safe-area-inset-bottom);
-  }
-  .safe-top {
-    padding-top: env(safe-area-inset-top);
-  }
-}
-
-/* Custom gradient backgrounds */
-.gradient-emerald {
-  background: linear-gradient(135deg, #10b981 0%, #14b8a6 100%);
-}
-
-.gradient-purple {
-  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
-}
-
-.gradient-orange {
-  background: linear-gradient(135deg, #f97316 0%, #fb923c 100%);
+  .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+  .safe-top { padding-top: env(safe-area-inset-top); }
 }
 
 /* Glass effect */
