@@ -1,7 +1,11 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
-import { Flame, Circle, CheckCircle2, Plus, ChevronRight, Sparkles, X } from 'lucide-react';
+import { Circle, CheckCircle2, Plus, ChevronRight, Sparkles, X, Share2 } from 'lucide-react';
 import type { UserProfile, Quest } from '../../../App';
+import type { UserStats } from '../../lib/gamification';
+import Tready from '../character/Tready';
+import XPBar from '../gamification/XPBar';
+import LifeCalendar from './widgets/LifeCalendar';
 
 interface HomeScreenProps {
   profile: UserProfile;
@@ -13,6 +17,10 @@ interface HomeScreenProps {
   onRegenerateQuests?: () => void;
   aiMessage?: string | null;
   isAiEnabled?: boolean;
+  stats: UserStats;
+  energy?: number;
+  onOpenShare?: () => void;
+  onOpenEnergy?: () => void;
 }
 
 export default function HomeScreen({
@@ -25,6 +33,10 @@ export default function HomeScreen({
   onRegenerateQuests,
   aiMessage,
   isAiEnabled,
+  stats,
+  energy,
+  onOpenShare,
+  onOpenEnergy,
 }: HomeScreenProps) {
   const today = new Date();
   const dayOfWeek = ['일', '월', '화', '수', '목', '금', '토'][today.getDay()];
@@ -33,7 +45,7 @@ export default function HomeScreen({
   // Year progress
   const startOfYear = new Date(today.getFullYear(), 0, 1);
   const dayOfYear = Math.ceil((today.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24));
-  const totalDays = ((today.getFullYear() % 4 === 0) ? 366 : 365);
+  const totalDays = today.getFullYear() % 4 === 0 ? 366 : 365;
   const yearProgress = ((dayOfYear / totalDays) * 100).toFixed(1);
 
   // D-Day
@@ -55,51 +67,56 @@ export default function HomeScreen({
             {today.getMonth() + 1}월 {today.getDate()}일 ({dayOfWeek})
           </p>
         </div>
-        <button className="w-9 h-9 bg-white rounded-xl border border-[#E5E7EB] flex items-center justify-center mt-1">
-          <Plus className="w-[18px] h-[18px] text-gray-600" />
-        </button>
+        <div className="flex items-center gap-2">
+          {onOpenShare && (
+            <button onClick={onOpenShare} className="w-9 h-9 bg-white rounded-xl border border-[#E5E7EB] flex items-center justify-center">
+              <Share2 className="w-[16px] h-[16px] text-gray-600" />
+            </button>
+          )}
+          <button className="w-9 h-9 bg-white rounded-xl border border-[#E5E7EB] flex items-center justify-center">
+            <Plus className="w-[18px] h-[18px] text-gray-600" />
+          </button>
+        </div>
       </div>
+
+      {/* ── Tready Character + XP ── */}
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
+        <Tready
+          level={stats.level}
+          isRunning={completedCount > 0 && completedCount < quests.length}
+          isSad={stats.currentStreak === 0 && stats.totalDaysActive > 1}
+          completionRate={completionRate}
+          className="mb-3"
+        />
+        <XPBar xp={stats.xp} level={stats.level} className="mb-4" />
+      </motion.div>
 
       {/* ── Stats Row ── */}
       <div className="grid grid-cols-3 gap-2.5 mb-4">
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-blue-50 rounded-2xl p-14"
-        >
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }}
+          className="bg-blue-50 rounded-2xl p-14">
           <p className="text-12 font-semibold text-blue-600 mb-1">Today</p>
           <p className="text-22 font-bold text-gray-900 leading-none">{completedCount}/{quests.length}</p>
         </motion.div>
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.04 }}
-          className="bg-orange-50 rounded-2xl p-14"
-        >
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}
+          className="bg-orange-50 rounded-2xl p-14">
           <p className="text-12 font-semibold text-orange-600 mb-1">Streak</p>
-          <p className="text-22 font-bold text-gray-900 leading-none">{profile.streak} <span className="text-base">🔥</span></p>
+          <p className="text-22 font-bold text-gray-900 leading-none">{stats.currentStreak} <span className="text-base">🔥</span></p>
         </motion.div>
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.08 }}
-          className="bg-purple-50 rounded-2xl p-14"
-        >
-          <p className="text-12 font-semibold text-purple-600 mb-1">D-Day</p>
-          <p className="text-22 font-bold text-gray-900 leading-none">{getDDay()}</p>
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}
+          onClick={onOpenEnergy}
+          className="bg-purple-50 rounded-2xl p-14 cursor-pointer">
+          <p className="text-12 font-semibold text-purple-600 mb-1">{energy ? 'Energy' : 'D-Day'}</p>
+          <p className="text-22 font-bold text-gray-900 leading-none">
+            {energy ? `${energy}/5 ⚡` : getDDay()}
+          </p>
         </motion.div>
       </div>
 
       {/* ── Year Progress ── */}
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.12 }}
-        className="bg-gradient-to-br from-fuchsia-400 via-pink-500 to-purple-500 rounded-3xl p-5 mb-4 text-white relative overflow-hidden"
-      >
-        {/* decorative circle */}
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }}
+        className="bg-gradient-to-br from-fuchsia-400 via-pink-500 to-purple-500 rounded-3xl p-5 mb-4 text-white relative overflow-hidden">
         <div className="absolute -top-8 -right-8 w-36 h-36 bg-white/10 rounded-full" />
-
         <div className="flex justify-between items-start mb-3 relative z-10">
           <div>
             <p className="text-15 font-semibold text-white/90">Year Progress</p>
@@ -110,20 +127,11 @@ export default function HomeScreen({
             <p className="text-13 text-white/60 mt-1">{dayOfYear}/{totalDays} days</p>
           </div>
         </div>
-
-        {/* dot grid */}
         <div className="flex flex-wrap gap-1 relative z-10">
           {Array.from({ length: 52 }).map((_, i) => (
-            <div
-              key={i}
-              className={`w-1.5 h-1.5 rounded-full ${
-                i < Math.floor(dayOfYear / 7) ? 'bg-white' : 'bg-white/30'
-              }`}
-            />
+            <div key={i} className={`w-1.5 h-1.5 rounded-full ${i < Math.floor(dayOfYear / 7) ? 'bg-white' : 'bg-white/30'}`} />
           ))}
         </div>
-
-        {/* scroll indicator */}
         <div className="flex justify-center mt-3 gap-1 relative z-10">
           <div className="w-6 h-1 bg-white/60 rounded-full" />
           <div className="w-1 h-1 bg-white/30 rounded-full" />
@@ -131,30 +139,14 @@ export default function HomeScreen({
         </div>
       </motion.div>
 
-      {/* ── Activity ── */}
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.18 }}
-        className="bg-white rounded-2xl p-4 border border-[#F3F4F6] mb-4"
-      >
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-base font-semibold text-gray-900">Activity</h3>
-          <div className="flex items-center gap-1 text-14 text-[#9CA3AF]">
-            <span>{profile.streak} day streak</span>
-            <Flame className="w-4 h-4 text-orange-500" />
-          </div>
-        </div>
-        <ActivityChart />
+      {/* ── Life Calendar ── */}
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}
+        className="bg-white rounded-2xl p-4 border border-[#F3F4F6] mb-4">
+        <LifeCalendar />
       </motion.div>
 
       {/* ── Today's Quest ── */}
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.24 }}
-        className="mb-4"
-      >
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.24 }} className="mb-4">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-bold text-gray-900 tracking-snug">Today's Quest</h2>
           <span className="text-14 text-[#9CA3AF]">{completedCount}/{quests.length} completed</span>
@@ -175,9 +167,7 @@ export default function HomeScreen({
                 transition={{ delay: 0.28 + index * 0.04 }}
                 onClick={() => onQuestToggle(quest.id)}
                 className={`bg-white rounded-14 p-4 border cursor-pointer active:scale-[0.98] transition-all ${
-                  quest.completed
-                    ? 'border-emerald-200 bg-emerald-50/40'
-                    : 'border-[#F3F4F6]'
+                  quest.completed ? 'border-emerald-200 bg-emerald-50/40' : 'border-[#F3F4F6]'
                 }`}
               >
                 <div className="flex items-start gap-3">
@@ -197,9 +187,7 @@ export default function HomeScreen({
                     )}
                   </div>
                   <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <span className="text-12 text-[#9CA3AF] bg-[#F3F4F6] px-2 py-1 rounded-lg">
-                      {quest.duration}
-                    </span>
+                    <span className="text-12 text-[#9CA3AF] bg-[#F3F4F6] px-2 py-1 rounded-lg">{quest.duration}</span>
                     {!quest.completed && onQuestFail && (
                       <button
                         onClick={(e) => { e.stopPropagation(); onQuestFail(quest.id); }}
@@ -213,7 +201,6 @@ export default function HomeScreen({
               </motion.div>
             ))}
 
-            {/* Add Quest */}
             <button
               onClick={isAiEnabled && onRegenerateQuests ? onRegenerateQuests : undefined}
               className="w-full py-3 text-14 font-medium text-[#7C3AED] flex items-center justify-center gap-1.5 hover:bg-purple-50 rounded-14 transition-colors"
@@ -226,12 +213,8 @@ export default function HomeScreen({
       </motion.div>
 
       {/* ── Priority Matrix ── */}
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.32 }}
-        className="bg-white rounded-2xl p-4 border border-[#F3F4F6] mb-4"
-      >
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }}
+        className="bg-white rounded-2xl p-4 border border-[#F3F4F6] mb-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-base font-semibold text-gray-900">Priority Matrix</h3>
           <button className="text-14 text-[#7C3AED] flex items-center gap-0.5 font-medium">
@@ -239,57 +222,31 @@ export default function HomeScreen({
           </button>
         </div>
         <div className="grid grid-cols-2 gap-2">
-          <PriorityCell
-            color="red"
-            label="Do First"
-            content={quests.filter(q => !q.completed && q.timeOfDay === 'morning')[0]?.title}
-          />
-          <PriorityCell
-            color="yellow"
-            label="Schedule"
-            content={quests.filter(q => !q.completed && q.timeOfDay === 'afternoon')[0]?.title}
-          />
-          <PriorityCell
-            color="green"
-            label="Delegate"
-            content={undefined}
-          />
-          <PriorityCell
-            color="gray"
-            label="Eliminate"
-            content={undefined}
-          />
+          <PriorityCell color="red" label="Do First" content={quests.filter(q => !q.completed && q.timeOfDay === 'morning')[0]?.title} />
+          <PriorityCell color="yellow" label="Schedule" content={quests.filter(q => !q.completed && q.timeOfDay === 'afternoon')[0]?.title} />
+          <PriorityCell color="green" label="Delegate" content={undefined} />
+          <PriorityCell color="gray" label="Eliminate" content={undefined} />
         </div>
       </motion.div>
 
       {/* ── Current Goal ── */}
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.38 }}
-        className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-3xl p-5 mb-4 text-white relative overflow-hidden"
-      >
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.38 }}
+        className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-3xl p-5 mb-4 text-white relative overflow-hidden">
         <div className="absolute top-4 right-4 w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
           <span className="text-2xl">🎯</span>
         </div>
         <p className="text-12 text-white/70 font-medium mb-1">Current Goal</p>
         <h3 className="text-22 font-bold leading-tight mb-4 pr-14">{profile.goal}</h3>
-
         <div className="mb-2">
           <div className="flex justify-between text-14 mb-1.5">
             <span className="text-white/80">Progress</span>
             <span className="font-semibold">{completionRate.toFixed(1)}%</span>
           </div>
           <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${completionRate}%` }}
-              transition={{ duration: 0.6 }}
-              className="h-full bg-white rounded-full"
-            />
+            <motion.div initial={{ width: 0 }} animate={{ width: `${completionRate}%` }} transition={{ duration: 0.6 }}
+              className="h-full bg-white rounded-full" />
           </div>
         </div>
-
         <div className="flex justify-between text-14 mt-3">
           <span className="text-white/70">Day {profile.currentDay}</span>
           <span className="text-white/70">{profile.deadline === '무제한' ? '무제한' : getDDay()}</span>
@@ -297,12 +254,8 @@ export default function HomeScreen({
       </motion.div>
 
       {/* ── AI Insight ── */}
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.44 }}
-        className="bg-white rounded-2xl p-4 border border-[#E9D5FF]"
-      >
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.44 }}
+        className="bg-white rounded-2xl p-4 border border-[#E9D5FF]">
         <div className="flex items-start gap-3">
           <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-[10px] flex items-center justify-center flex-shrink-0">
             <Sparkles className="w-4 h-4 text-white" />
@@ -310,9 +263,7 @@ export default function HomeScreen({
           <div className="min-w-0">
             <p className="text-15 font-semibold text-gray-900 mb-1">AI Insight</p>
             <p className="text-13 text-[#6B7280] leading-relaxed">
-              {aiMessage || (profile.streak > 0
-                ? `어제 스트릭칭을 건너뛰셨네요. 오늘은 자세 교정이 우선입니다. 작은 행동이 큰 변화로 이어갑니다! 💪`
-                : '오늘 첫 퀘스트를 완료하고 스트릭을 시작해보세요! 작은 시작이 큰 변화의 첫걸음이에요.')}
+              {aiMessage || '오늘 첫 퀘스트를 완료하고 스트릭을 시작해보세요! 작은 시작이 큰 변화의 첫걸음이에요.'}
             </p>
           </div>
         </div>
@@ -321,7 +272,6 @@ export default function HomeScreen({
   );
 }
 
-/* ── Priority Cell ── */
 function PriorityCell({ color, label, content }: { color: string; label: string; content?: string }) {
   const styles: Record<string, { bg: string; dot: string; text: string }> = {
     red:    { bg: 'bg-red-50',    dot: '🔴', text: 'text-red-600' },
@@ -330,87 +280,10 @@ function PriorityCell({ color, label, content }: { color: string; label: string;
     gray:   { bg: 'bg-gray-50',   dot: '⚫', text: 'text-gray-500' },
   };
   const s = styles[color] || styles.gray;
-
   return (
     <div className={`${s.bg} rounded-xl p-3`}>
       <p className={`text-12 font-semibold ${s.text} mb-1`}>{s.dot} {label}</p>
-      <p className="text-12 text-[#6B7280]">
-        {content ? `• ${content}` : '• Empty'}
-      </p>
-    </div>
-  );
-}
-
-/* ── Activity Chart ── */
-function ActivityChart() {
-  const months = ['Jan', 'Feb', 'Mar'];
-  const generateData = () => {
-    const data: number[][] = [];
-    for (let w = 0; w < 12; w++) {
-      const week: number[] = [];
-      for (let d = 0; d < 7; d++) {
-        const chance = 0.3 + (w / 12) * 0.4;
-        week.push(Math.random() < chance ? Math.floor(Math.random() * 4) + 1 : 0);
-      }
-      data.push(week);
-    }
-    return data;
-  };
-
-  const [data] = useState(generateData);
-
-  const getColor = (v: number) => {
-    if (v === 0) return 'bg-gray-100';
-    if (v === 1) return 'bg-emerald-200';
-    if (v === 2) return 'bg-emerald-300';
-    if (v === 3) return 'bg-emerald-400';
-    return 'bg-emerald-500';
-  };
-
-  return (
-    <div>
-      {/* Month labels */}
-      <div className="flex mb-1.5 ml-5 text-11 text-[#9CA3AF]" style={{ gap: '28px' }}>
-        {months.map(m => <span key={m}>{m}</span>)}
-      </div>
-
-      <div className="flex" style={{ gap: '3px' }}>
-        {/* Day labels */}
-        <div className="flex flex-col text-11 text-[#9CA3AF] mr-1" style={{ gap: '3px' }}>
-          <span className="h-3.5 leading-[14px]">M</span>
-          <span className="h-3.5 leading-[14px]"></span>
-          <span className="h-3.5 leading-[14px]">W</span>
-          <span className="h-3.5 leading-[14px]"></span>
-          <span className="h-3.5 leading-[14px]">F</span>
-          <span className="h-3.5 leading-[14px]"></span>
-          <span className="h-3.5 leading-[14px]"></span>
-        </div>
-
-        {/* Grid */}
-        <div className="flex" style={{ gap: '3px' }}>
-          {data.map((week, wi) => (
-            <div key={wi} className="flex flex-col" style={{ gap: '3px' }}>
-              {week.map((v, di) => (
-                <div
-                  key={`${wi}-${di}`}
-                  className={`w-3.5 h-3.5 rounded-[3px] ${getColor(v)}`}
-                />
-              ))}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Legend */}
-      <div className="flex items-center justify-between mt-3 text-11 text-[#9CA3AF]">
-        <span>Less</span>
-        <div className="flex" style={{ gap: '3px' }}>
-          {[0, 1, 2, 3, 4].map(l => (
-            <div key={l} className={`w-3.5 h-3.5 rounded-[3px] ${getColor(l)}`} />
-          ))}
-        </div>
-        <span>More</span>
-      </div>
+      <p className="text-12 text-[#6B7280]">{content ? `• ${content}` : '• Empty'}</p>
     </div>
   );
 }
