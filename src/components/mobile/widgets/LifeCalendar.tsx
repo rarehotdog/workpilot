@@ -1,5 +1,4 @@
 import { useMemo } from 'react';
-import { motion } from 'motion/react';
 import { Flame } from 'lucide-react';
 
 interface LifeCalendarProps {

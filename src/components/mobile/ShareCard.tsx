@@ -20,8 +20,6 @@ export default function ShareCard({ isOpen, onClose, profile, streak, level, com
     if (!cardRef.current) return;
 
     try {
-      // Use html2canvas-like approach with canvas
-      const card = cardRef.current;
       const canvas = document.createElement('canvas');
       canvas.width = 540;
       canvas.height = 540;

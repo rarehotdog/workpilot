@@ -174,7 +174,7 @@ export default function App() {
     finally { setIsGeneratingQuests(false); }
   };
 
-  const setDefaultQuests = (profile: UserProfile) => {
+  const setDefaultQuests = (_profile: UserProfile) => {
     const quests: Quest[] = [
       { id: '1', title: '오늘의 목표 설정하기', duration: '5분', completed: false, timeOfDay: 'morning', description: '하루를 시작하기 전 목표를 정해보세요' },
       { id: '2', title: '집중 시간 갖기', duration: '25분', completed: false, timeOfDay: 'afternoon', description: '포모도로 타이머로 집중해보세요' },
@@ -212,7 +212,7 @@ export default function App() {
   }, [earnedBadgeIds, levelUpInfo]);
 
   // ── Energy check ──
-  const handleEnergySubmit = (energyLevel: number, mood: string) => {
+  const handleEnergySubmit = (energyLevel: number, _mood: string) => {
     setEnergy(energyLevel);
     localStorage.setItem('ltr_energyToday', String(energyLevel));
     localStorage.setItem('ltr_energyDate', new Date().toISOString().split('T')[0]);
@@ -372,7 +372,7 @@ export default function App() {
           if (idx + 1 < t.root.children.length) {
             t.root.children[idx + 1].status = 'in_progress';
             if (t.root.children[idx + 1].children?.[0])
-              t.root.children[idx + 1].children[0].status = 'in_progress';
+              t.root.children[idx + 1].children![0].status = 'in_progress';
           }
         }
         break;
@@ -470,7 +470,7 @@ export default function App() {
         )}
         {currentScreen === 'progress' && userProfile && (
           <motion.div key="progress" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="pt-11 pb-24">
-            <ProgressScreen profile={userProfile} completionRate={completionRate} completedCount={completedCount} totalCount={totalCount} />
+            <ProgressScreen profile={userProfile} completionRate={completionRate} completedCount={completedCount} totalCount={totalCount} stats={stats} earnedBadgeIds={earnedBadgeIds} />
           </motion.div>
         )}
         {currentScreen === 'profile' && userProfile && (

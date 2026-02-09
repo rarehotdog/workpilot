@@ -7,6 +7,16 @@ interface OnboardingFlowProps {
   onComplete: (profile: UserProfile) => void;
 }
 
+// Goal presets for quick selection
+const goalPresets = [
+  { emoji: '🎓', label: '시험/합격', example: 'TOEIC 900점, 자격증 취득' },
+  { emoji: '💪', label: '건강/운동', example: '10kg 감량, 마라톤 완주' },
+  { emoji: '💻', label: '커리어/기술', example: '코딩 마스터, 이직 성공' },
+  { emoji: '📖', label: '학습/성장', example: '책 50권, 새 언어 배우기' },
+  { emoji: '💰', label: '재테크/자산', example: '1000만원 모으기, 투자 시작' },
+  { emoji: '🎨', label: '창작/취미', example: '앱 출시, 그림 100장' },
+];
+
 const questions = [
   {
     id: 'name',
@@ -21,8 +31,8 @@ const questions = [
     icon: Target,
     title: '어떤 사람이 되고 싶어요?',
     subtitle: '북극성이 될 큰 목표를 알려주세요',
-    placeholder: '예: Stanford MBA 합격, 10kg 감량',
-    type: 'textarea' as const,
+    placeholder: '직접 입력하기...',
+    type: 'goal' as const,
   },
   {
     id: 'deadline',
@@ -72,7 +82,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     if (currentStep < questions.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
-      // Complete onboarding
       const profile: UserProfile = {
         name: answers.name,
         goal: answers.goal,
@@ -90,9 +99,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   };
 
   const handleBack = () => {
-    if (currentStep > 0) {
-      setCurrentStep(currentStep - 1);
-    }
+    if (currentStep > 0) setCurrentStep(currentStep - 1);
   };
 
   return (
@@ -101,18 +108,13 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       <div className="px-5 pt-12 pb-4">
         <div className="flex items-center justify-between mb-6">
           {currentStep > 0 ? (
-            <button
-              onClick={handleBack}
-              className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center"
-            >
+            <button onClick={handleBack} className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
               <ArrowLeft className="w-5 h-5 text-gray-600" />
             </button>
           ) : (
             <div className="w-10" />
           )}
-          <span className="text-sm text-gray-500">
-            {currentStep + 1} / {questions.length}
-          </span>
+          <span className="text-13 text-[#9CA3AF] font-medium">{currentStep + 1} / {questions.length}</span>
           <div className="w-10" />
         </div>
 
@@ -121,7 +123,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           <motion.div
             initial={{ width: 0 }}
             animate={{ width: `${progress}%` }}
-            className="h-full bg-emerald-500 rounded-full"
+            className="h-full bg-[#7C3AED] rounded-full"
+            transition={{ duration: 0.3 }}
           />
         </div>
       </div>
@@ -130,74 +133,104 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       <AnimatePresence mode="wait">
         <motion.div
           key={currentStep}
-          initial={{ opacity: 0, x: 20 }}
+          initial={{ opacity: 0, x: 30 }}
           animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -20 }}
-          className="px-5 py-8"
+          exit={{ opacity: 0, x: -30 }}
+          transition={{ duration: 0.25 }}
+          className="px-5 py-6"
         >
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 bg-emerald-100 rounded-2xl flex items-center justify-center">
-              <currentQuestion.icon className="w-6 h-6 text-emerald-600" />
+            <div className="w-12 h-12 bg-purple-100 rounded-2xl flex items-center justify-center">
+              <currentQuestion.icon className="w-6 h-6 text-[#7C3AED]" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">{currentQuestion.title}</h1>
-              <p className="text-gray-500">{currentQuestion.subtitle}</p>
+              <h1 className="text-22 font-bold text-gray-900">{currentQuestion.title}</h1>
+              <p className="text-14 text-[#9CA3AF]">{currentQuestion.subtitle}</p>
             </div>
           </div>
 
-          {/* Input */}
+          {/* Text Input */}
           {currentQuestion.type === 'text' && (
             <input
               type="text"
               value={answers[currentQuestion.id]}
-              onChange={(e) =>
-                setAnswers({ ...answers, [currentQuestion.id]: e.target.value })
-              }
+              onChange={(e) => setAnswers({ ...answers, [currentQuestion.id]: e.target.value })}
               placeholder={currentQuestion.placeholder}
-              className="w-full p-4 text-lg border-2 border-gray-200 rounded-2xl focus:border-emerald-500 focus:outline-none transition-colors"
+              className="w-full p-4 text-15 border-2 border-gray-200 rounded-2xl focus:border-[#7C3AED] focus:outline-none transition-colors"
+              autoFocus
             />
           )}
 
+          {/* Goal with Presets */}
+          {currentQuestion.type === 'goal' && (
+            <div>
+              {/* Presets */}
+              <div className="grid grid-cols-2 gap-2 mb-4">
+                {goalPresets.map(preset => (
+                  <button
+                    key={preset.label}
+                    onClick={() => setAnswers({ ...answers, goal: preset.example })}
+                    className={`p-3 rounded-14 border-2 text-left transition-all ${
+                      answers.goal === preset.example
+                        ? 'border-[#7C3AED] bg-purple-50'
+                        : 'border-[#F3F4F6] hover:border-purple-200'
+                    }`}
+                  >
+                    <span className="text-xl">{preset.emoji}</span>
+                    <p className="text-13 font-medium text-gray-900 mt-1">{preset.label}</p>
+                    <p className="text-11 text-[#9CA3AF] mt-0.5">{preset.example}</p>
+                  </button>
+                ))}
+              </div>
+
+              {/* Custom input */}
+              <textarea
+                value={answers.goal}
+                onChange={(e) => setAnswers({ ...answers, goal: e.target.value })}
+                placeholder={currentQuestion.placeholder}
+                rows={3}
+                className="w-full p-4 text-15 border-2 border-gray-200 rounded-2xl focus:border-[#7C3AED] focus:outline-none transition-colors resize-none"
+              />
+            </div>
+          )}
+
+          {/* Textarea */}
           {currentQuestion.type === 'textarea' && (
             <textarea
               value={answers[currentQuestion.id]}
-              onChange={(e) =>
-                setAnswers({ ...answers, [currentQuestion.id]: e.target.value })
-              }
+              onChange={(e) => setAnswers({ ...answers, [currentQuestion.id]: e.target.value })}
               placeholder={currentQuestion.placeholder}
               rows={4}
-              className="w-full p-4 text-lg border-2 border-gray-200 rounded-2xl focus:border-emerald-500 focus:outline-none transition-colors resize-none"
+              className="w-full p-4 text-15 border-2 border-gray-200 rounded-2xl focus:border-[#7C3AED] focus:outline-none transition-colors resize-none"
             />
           )}
 
+          {/* Date */}
           {currentQuestion.type === 'date' && (
             <input
               type="date"
               value={answers[currentQuestion.id]}
-              onChange={(e) =>
-                setAnswers({ ...answers, [currentQuestion.id]: e.target.value })
-              }
-              className="w-full p-4 text-lg border-2 border-gray-200 rounded-2xl focus:border-emerald-500 focus:outline-none transition-colors"
+              onChange={(e) => setAnswers({ ...answers, [currentQuestion.id]: e.target.value })}
+              className="w-full p-4 text-15 border-2 border-gray-200 rounded-2xl focus:border-[#7C3AED] focus:outline-none transition-colors"
               min={new Date().toISOString().split('T')[0]}
             />
           )}
 
+          {/* Choice */}
           {currentQuestion.type === 'choice' && currentQuestion.choices && (
             <div className="space-y-3">
               {currentQuestion.choices.map((choice) => (
                 <button
                   key={choice.value}
-                  onClick={() =>
-                    setAnswers({ ...answers, [currentQuestion.id]: choice.value })
-                  }
+                  onClick={() => setAnswers({ ...answers, [currentQuestion.id]: choice.value })}
                   className={`w-full p-4 rounded-2xl border-2 text-left transition-all ${
                     answers[currentQuestion.id] === choice.value
-                      ? 'border-emerald-500 bg-emerald-50'
-                      : 'border-gray-200 hover:border-emerald-300'
+                      ? 'border-[#7C3AED] bg-purple-50'
+                      : 'border-gray-200 hover:border-purple-300'
                   }`}
                 >
                   <div className="text-lg font-medium text-gray-900">{choice.label}</div>
-                  <div className="text-sm text-gray-500">{choice.description}</div>
+                  <div className="text-13 text-[#9CA3AF]">{choice.description}</div>
                 </button>
               ))}
             </div>
@@ -206,26 +239,20 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       </AnimatePresence>
 
       {/* Footer */}
-      <div className="fixed bottom-0 left-0 right-0 max-w-[430px] mx-auto p-5 bg-white border-t border-gray-100">
+      <div className="fixed bottom-0 left-0 right-0 max-w-[430px] mx-auto p-5 bg-white border-t border-[#F3F4F6]">
         <button
           onClick={handleNext}
           disabled={!canProceed}
-          className={`w-full py-4 rounded-2xl font-semibold text-lg flex items-center justify-center gap-2 transition-all ${
+          className={`w-full py-4 rounded-14 font-semibold text-15 flex items-center justify-center gap-2 transition-all ${
             canProceed
-              ? 'bg-emerald-500 text-white hover:bg-emerald-600'
+              ? 'bg-[#7C3AED] text-white hover:bg-purple-700'
               : 'bg-gray-100 text-gray-400 cursor-not-allowed'
           }`}
         >
           {currentStep === questions.length - 1 ? (
-            <>
-              완료
-              <Sparkles className="w-5 h-5" />
-            </>
+            <>완료 <Sparkles className="w-5 h-5" /></>
           ) : (
-            <>
-              다음
-              <ArrowRight className="w-5 h-5" />
-            </>
+            <>다음 <ArrowRight className="w-5 h-5" /></>
           )}
         </button>
       </div>

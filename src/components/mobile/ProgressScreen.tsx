@@ -2,19 +2,26 @@ import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { TrendingUp, Target, Flame, Calendar, Award, BarChart3 } from 'lucide-react';
 import type { UserProfile } from '../../../App';
+import type { UserStats } from '../../lib/gamification';
+import { BadgeGrid } from '../gamification/BadgeDisplay';
+import XPBar from '../gamification/XPBar';
 
 interface ProgressScreenProps {
   profile: UserProfile;
   completionRate: number;
   completedCount: number;
   totalCount: number;
+  stats?: UserStats;
+  earnedBadgeIds?: string[];
 }
 
 export default function ProgressScreen({
   profile,
-  completionRate,
+  completionRate: _completionRate,
   completedCount,
   totalCount,
+  stats,
+  earnedBadgeIds = [],
 }: ProgressScreenProps) {
   // Load quest history from localStorage
   const [weeklyData, setWeeklyData] = useState<{ day: string; completed: number; total: number }[]>([]);
@@ -195,8 +202,44 @@ export default function ProgressScreen({
         </div>
       </motion.div>
 
+      {/* ── XP & Level ── */}
+      {stats && (
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.26 }}
+          className="bg-white rounded-2xl p-4 border border-[#F3F4F6] mb-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-15 font-semibold text-gray-900">레벨 & 경험치</h3>
+            <span className="text-14 font-bold text-[#7C3AED]">{stats.xp} XP</span>
+          </div>
+          <XPBar xp={stats.xp} level={stats.level} />
+          <div className="grid grid-cols-3 gap-2 mt-3">
+            <div className="bg-purple-50 rounded-xl p-2 text-center">
+              <p className="text-15 font-bold text-[#7C3AED]">{stats.totalQuestsCompleted}</p>
+              <p className="text-11 text-[#9CA3AF]">총 퀘스트</p>
+            </div>
+            <div className="bg-orange-50 rounded-xl p-2 text-center">
+              <p className="text-15 font-bold text-orange-600">{stats.longestStreak}</p>
+              <p className="text-11 text-[#9CA3AF]">최장 스트릭</p>
+            </div>
+            <div className="bg-emerald-50 rounded-xl p-2 text-center">
+              <p className="text-15 font-bold text-emerald-600">{stats.perfectDays}</p>
+              <p className="text-11 text-[#9CA3AF]">퍼펙트 데이</p>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* ── Badges ── */}
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+        className="bg-white rounded-2xl p-4 border border-[#F3F4F6] mb-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-15 font-semibold text-gray-900">뱃지</h3>
+          <span className="text-13 text-[#9CA3AF]">{earnedBadgeIds.length}/12 획득</span>
+        </div>
+        <BadgeGrid earnedBadgeIds={earnedBadgeIds} />
+      </motion.div>
+
       {/* ── Achievement ── */}
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.26 }}
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.34 }}
         className="bg-gradient-to-r from-amber-50 to-yellow-50 rounded-2xl p-4 border border-amber-100">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 bg-gradient-to-br from-amber-400 to-yellow-500 rounded-xl flex items-center justify-center">

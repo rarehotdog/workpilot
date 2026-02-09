@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { motion } from 'motion/react';
 import { Circle, CheckCircle2, Plus, ChevronRight, Sparkles, X, Share2 } from 'lucide-react';
 import type { UserProfile, Quest } from '../../../App';
