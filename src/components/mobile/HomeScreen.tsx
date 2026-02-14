@@ -42,6 +42,7 @@ export default function HomeScreen({
   const completedCount = quests.filter(q => q.completed).length;
   const nextQuest = quests.find(q => !q.completed) || quests[0];
   const fallbackQuest = nextQuest?.alternative || '대체 퀘스트 자동 생성';
+  const recentFailurePattern = getRecentFailurePattern();
 
   // Year progress
   const startOfYear = new Date(today.getFullYear(), 0, 1);
@@ -161,6 +162,11 @@ export default function HomeScreen({
             <p className="text-13 text-[#6B7280] leading-relaxed">
               목표: <span className="font-medium text-gray-900">{profile.goal}</span> · 제약: <span className="font-medium text-gray-900">{profile.constraints}</span> · 에너지: <span className="font-medium text-gray-900">{energy ? `${energy}/5` : '미체크'}</span>
             </p>
+            {recentFailurePattern && (
+              <p className="text-12 text-[#9CA3AF] mt-2">
+                최근 실패 패턴: {recentFailurePattern}
+              </p>
+            )}
           </div>
 
           <div className="bg-white rounded-2xl p-4 border border-[#E5E7EB]">
@@ -327,6 +333,32 @@ export default function HomeScreen({
       </motion.div>
     </div>
   );
+}
+
+function getRecentFailurePattern(): string | null {
+  try {
+    const raw = localStorage.getItem('ltr_failureLog');
+    if (!raw) return null;
+    const logs = JSON.parse(raw) as Array<{ rootCause?: string }>;
+    if (!logs.length) return null;
+
+    const counts: Record<string, number> = {};
+    for (const log of logs.slice(0, 20)) {
+      const key = log.rootCause || 'other';
+      counts[key] = (counts[key] || 0) + 1;
+    }
+    const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0];
+    const labels: Record<string, string> = {
+      time: '시간 압박',
+      motivation: '동기 저하',
+      difficulty: '난이도 과부하',
+      environment: '환경 제약',
+      other: '기타',
+    };
+    return labels[top || 'other'] || '기타';
+  } catch {
+    return null;
+  }
 }
 
 function PriorityCell({ color, label, content }: { color: string; label: string; content?: string }) {

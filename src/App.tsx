@@ -7,7 +7,7 @@ import TechTreeScreen from './components/mobile/TechTreeScreen';
 import ProgressScreen from './components/mobile/ProgressScreen';
 import ProfileScreen from './components/mobile/ProfileScreen';
 import BottomNavigation from './components/mobile/BottomNavigation';
-import FailureSheet from './components/mobile/FailureSheet';
+import FailureSheet, { type FailureResolutionMeta } from './components/mobile/FailureSheet';
 import EnergyCheckIn from './components/mobile/EnergyCheckIn';
 import ShareCard from './components/mobile/ShareCard';
 import LevelUpModal from './components/gamification/LevelUpModal';
@@ -65,6 +65,16 @@ export interface Quest {
   alternative?: string;
   timeOfDay: 'morning' | 'afternoon' | 'evening';
   description?: string;
+}
+
+interface FailureLogEntry {
+  timestamp: string;
+  questId: string;
+  questTitle: string;
+  reasonCode: FailureResolutionMeta['reasonCode'];
+  reasonText: string;
+  rootCause: FailureResolutionMeta['rootCause'];
+  energy?: number;
 }
 
 export default function App() {
@@ -388,10 +398,26 @@ export default function App() {
     if (quest) { setFailureQuest(quest); setIsFailureSheetOpen(true); }
   }, [todayQuests]);
 
-  const handleAcceptRecovery = useCallback((recoveryQuest: Quest) => {
+  const handleAcceptRecovery = useCallback((recoveryQuest: Quest, meta: FailureResolutionMeta) => {
     const xp = calculateRecoveryXP();
     const newStats = addXP(xp, { ...stats, failureRecoveries: stats.failureRecoveries + 1 });
     setStats(newStats);
+
+    if (failureQuest) {
+      const logEntry: FailureLogEntry = {
+        timestamp: new Date().toISOString(),
+        questId: failureQuest.id,
+        questTitle: failureQuest.title,
+        reasonCode: meta.reasonCode,
+        reasonText: meta.reasonText,
+        rootCause: meta.rootCause,
+        energy,
+      };
+      const raw = localStorage.getItem('ltr_failureLog');
+      const prev: FailureLogEntry[] = raw ? JSON.parse(raw) : [];
+      const next = [logEntry, ...prev].slice(0, 100);
+      localStorage.setItem('ltr_failureLog', JSON.stringify(next));
+    }
 
     setTodayQuests(prev => {
       const updated = prev.map(q => q.id === failureQuest?.id ? { ...recoveryQuest, id: q.id } : q);
@@ -400,7 +426,7 @@ export default function App() {
       return updated;
     });
     setFailureQuest(null);
-  }, [failureQuest, stats, addXP]);
+  }, [failureQuest, stats, addXP, energy]);
 
   const handleTechTreeUpdate = useCallback((tree: TechTreeResponse) => {
     setTechTree(tree);
@@ -492,6 +518,7 @@ export default function App() {
             onClose={() => setIsFailureSheetOpen(false)}
             quest={failureQuest}
             profile={userProfile}
+            energy={energy}
             onAcceptRecovery={handleAcceptRecovery}
           />
           <EnergyCheckIn

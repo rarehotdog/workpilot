@@ -2,31 +2,43 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Loader2, Heart, ArrowRight } from 'lucide-react';
 import type { UserProfile, Quest } from '../../App';
-import { analyzeFailure, isGeminiConfigured, type FailureAnalysis } from '../../lib/gemini';
+import { analyzeFailure, isGeminiConfigured, type FailureAnalysis, type FailureReasonCode } from '../../lib/gemini';
+
+export interface FailureResolutionMeta {
+  reasonCode: FailureReasonCode;
+  reasonText: string;
+  rootCause: FailureAnalysis['rootCause'];
+}
 
 interface FailureSheetProps {
   isOpen: boolean;
   onClose: () => void;
   quest: Quest | null;
   profile: UserProfile;
-  onAcceptRecovery: (quest: Quest) => void;
+  energy?: number;
+  onAcceptRecovery: (quest: Quest, meta: FailureResolutionMeta) => void;
 }
 
-export default function FailureSheet({ isOpen, onClose, quest, profile, onAcceptRecovery }: FailureSheetProps) {
+export default function FailureSheet({ isOpen, onClose, quest, profile, energy, onAcceptRecovery }: FailureSheetProps) {
   const [reason, setReason] = useState('');
+  const [selectedReasonCode, setSelectedReasonCode] = useState<FailureReasonCode>('other');
+  const [selectedReasonText, setSelectedReasonText] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<FailureAnalysis | null>(null);
   const [step, setStep] = useState<'reason' | 'analysis'>('reason');
 
   const quickReasons = [
-    { emoji: '⏰', label: '시간이 부족했어요' },
-    { emoji: '😮‍💨', label: '의욕이 없었어요' },
-    { emoji: '😰', label: '너무 어려웠어요' },
-    { emoji: '🏠', label: '환경이 안 됐어요' },
-    { emoji: '🤒', label: '컨디션이 안 좋았어요' },
+    { emoji: '⏰', label: '시간이 부족했어요', code: 'time' as const },
+    { emoji: '😮‍💨', label: '의욕이 없었어요', code: 'motivation' as const },
+    { emoji: '😰', label: '너무 어려웠어요', code: 'difficulty' as const },
+    { emoji: '🏠', label: '환경이 안 됐어요', code: 'environment' as const },
+    { emoji: '🤒', label: '컨디션이 안 좋았어요', code: 'health' as const },
   ];
 
-  const handleAnalyze = async (selectedReason: string) => {
+  const handleAnalyze = async (selectedReasonTextInput: string, selectedReasonCodeInput: FailureReasonCode) => {
+    setSelectedReasonText(selectedReasonTextInput);
+    setSelectedReasonCode(selectedReasonCodeInput);
+
     if (!quest || !isGeminiConfigured()) {
       // Provide default fallback
       setAnalysis({
@@ -48,7 +60,12 @@ export default function FailureSheet({ isOpen, onClose, quest, profile, onAccept
 
     setIsAnalyzing(true);
     try {
-      const result = await analyzeFailure(quest, selectedReason, profile);
+      const result = await analyzeFailure(quest, {
+        reasonCode: selectedReasonCodeInput,
+        reasonText: selectedReasonTextInput,
+        energy,
+        remainingMinutes: estimateRemainingMinutes(),
+      }, profile);
       if (result) {
         setAnalysis(result);
         setStep('analysis');
@@ -78,14 +95,28 @@ export default function FailureSheet({ isOpen, onClose, quest, profile, onAccept
     setReason('');
     setAnalysis(null);
     setStep('reason');
+    setSelectedReasonCode('other');
+    setSelectedReasonText('');
     onClose();
   };
 
   const handleAccept = () => {
     if (analysis?.recoveryQuest) {
-      onAcceptRecovery(analysis.recoveryQuest);
+      onAcceptRecovery(analysis.recoveryQuest, {
+        reasonCode: selectedReasonCode,
+        reasonText: selectedReasonText,
+        rootCause: analysis.rootCause,
+      });
     }
     handleClose();
+  };
+
+  const estimateRemainingMinutes = () => {
+    const now = new Date();
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
+    const ms = Math.max(0, end.getTime() - now.getTime());
+    return Math.floor(ms / (1000 * 60));
   };
 
   const rootCauseEmoji: Record<string, string> = {
@@ -149,7 +180,7 @@ export default function FailureSheet({ isOpen, onClose, quest, profile, onAccept
                     {quickReasons.map(r => (
                       <button
                         key={r.label}
-                        onClick={() => handleAnalyze(r.label)}
+                        onClick={() => handleAnalyze(r.label, r.code)}
                         disabled={isAnalyzing}
                         className="w-full bg-white border border-[#F3F4F6] rounded-14 p-3.5 text-left flex items-center gap-3 hover:bg-gray-50 transition-colors active:scale-[0.98]"
                       >
@@ -169,7 +200,7 @@ export default function FailureSheet({ isOpen, onClose, quest, profile, onAccept
                       className="flex-1 bg-[#F3F4F6] rounded-14 px-4 py-3 text-15 placeholder:text-[#9CA3AF]"
                     />
                     <button
-                      onClick={() => reason.trim() && handleAnalyze(reason)}
+                      onClick={() => reason.trim() && handleAnalyze(reason, 'other')}
                       disabled={!reason.trim() || isAnalyzing}
                       className="bg-[#7C3AED] rounded-14 px-4 py-3 text-white disabled:opacity-40"
                     >

@@ -177,9 +177,18 @@ export interface FailureAnalysis {
   encouragement: string;
 }
 
+export type FailureReasonCode = 'time' | 'motivation' | 'difficulty' | 'environment' | 'health' | 'other';
+
+export interface FailureContext {
+  reasonCode: FailureReasonCode;
+  reasonText: string;
+  energy?: number;
+  remainingMinutes?: number;
+}
+
 export async function analyzeFailure(
   quest: Quest,
-  reason: string,
+  context: FailureContext,
   profile: UserProfile
 ): Promise<FailureAnalysis | null> {
   if (!model) return null;
@@ -187,8 +196,11 @@ export async function analyzeFailure(
   const prompt = `사용자가 퀘스트를 완료하지 못했습니다. 공감하며 분석하고 회복 방안을 제안하세요.
 
 실패한 퀘스트: ${quest.title}
-사용자 이유: ${reason}
+사용자 이유 코드: ${context.reasonCode}
+사용자 이유 상세: ${context.reasonText}
 목표: ${profile.goal}
+현재 에너지(1-5): ${context.energy ?? 'unknown'}
+오늘 남은 시간(분): ${context.remainingMinutes ?? 'unknown'}
 
 JSON 형식으로만 응답:
 {
@@ -207,7 +219,16 @@ JSON 형식으로만 응답:
 
   try {
     const result = await model.generateContent(prompt);
-    return parseJSON<FailureAnalysis>(result.response.text());
+    const parsed = parseJSON<FailureAnalysis>(result.response.text());
+    if (!parsed) return null;
+    return {
+      ...parsed,
+      recoveryQuest: {
+        ...parsed.recoveryQuest,
+        timeOfDay: quest.timeOfDay,
+        completed: false,
+      },
+    };
   } catch {
     return null;
   }
