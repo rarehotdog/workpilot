@@ -1,106 +1,67 @@
-# 🏃 LIFE TREADMILLS (LTR)
+# LIFE TREADMILLS (LTR)
 
-> AI가 내 삶의 맥락을 읽고, 오늘 당장 실행할 '진짜 다음 한 걸음'을 설계해주는 Life OS
+AI가 삶의 맥락을 읽고, 오늘 실행할 단 하나의 다음 행동을 설계하는 Life OS.
 
-## ✨ Features
+## Core Idea
+- 문제: 의지 부족이 아니라 결정 피로(decision fatigue)
+- 해법: Context -> Think -> Action 루프에서 의사결정 비용 제거
+- 원칙: 실패는 리셋이 아니라 경로 수정 데이터
 
-- 🎯 **맞춤형 온보딩** - 나의 목표, 제약, 루틴을 파악
-- 🌳 **테크트리 시각화** - 목표까지의 여정을 트리 구조로 확인
-- 📊 **진행 현황** - GitHub 스타일 기여 차트, 연간 진행률
-- 🔥 **스트릭 & 보상** - 연속 달성으로 동기부여
+## 3-Layer Architecture
+1. Context Layer
+- 텍스트, 음성, 이미지, 행동 로그 기반 상태 수집
+- 제약(시간/에너지/환경) + 패턴(실패/성공) 관리
 
-## 🛠 Tech Stack
+2. Think Layer
+- Gemini 추론으로 오늘의 우선 경로 계산
+- Dynamic Tech-Tree 업데이트
 
-- **React 18** + TypeScript
-- **Vite** - 초고속 빌드 도구
-- **Tailwind CSS v4** - 모던 스타일링
-- **Motion (Framer Motion)** - 부드러운 애니메이션
-- **Lucide Icons** - 아이콘 세트
+3. Action Layer
+- 위젯형 Today Dashboard
+- 메인 퀘스트 + 대체 퀘스트 + 실패 복구 루프
 
-## 🚀 Quick Start
+## Current App Status
+- 온보딩/프로필 저장
+- 오늘의 퀘스트 생성/완료/실패 처리
+- 실패 복구 플로우
+- 테크트리 화면
+- XP/레벨/스트릭 게이미피케이션
+- Home의 `Pathfinder OS` 3-Layer 위젯 섹션
 
+## Project Structure
+```text
+/Users/taehyeonkim/Documents/New project
+├── src/
+│   ├── App.tsx
+│   ├── main.tsx
+│   ├── components/
+│   │   ├── OnboardingFlow.tsx
+│   │   ├── character/
+│   │   ├── gamification/
+│   │   └── mobile/
+│   ├── lib/
+│   └── styles/
+├── docs/
+│   ├── HACKATHON_ONE_PAGER.md
+│   ├── GEMINI_PROMPTS.md
+│   └── DEMO_SCRIPT_3MIN.md
+└── vite.config.ts
+```
+
+## Run
 ```bash
-# Clone
-git clone https://github.com/rarehotdog/Life-Treadmill.git
-cd life-treadmill
-
-# Install
 npm install
-
-# Run
 npm run dev
 ```
 
-브라우저에서 `http://localhost:3000` 접속
-
-## 📁 Project Structure
-
-```
-life-treadmill/
-├── App.tsx                    # 메인 앱 컴포넌트
-├── index.html                 # HTML 진입점
-├── vite.config.ts             # Vite 설정
-├── src/
-│   ├── main.tsx               # React 진입점
-│   ├── styles/
-│   │   └── globals.css        # Tailwind CSS
-│   └── components/
-│       ├── OnboardingFlow.tsx          # 온보딩 플로우
-│       ├── figma/
-│       │   └── ImageWithFallback.tsx   # 이미지 폴백
-│       └── mobile/
-│           ├── HomeScreen.tsx          # 홈 화면
-│           ├── TechTreeScreen.tsx      # 테크트리
-│           ├── ProgressScreen.tsx      # 진행 현황
-│           ├── ProfileScreen.tsx       # 프로필
-│           ├── BottomNavigation.tsx    # 하단 네비게이션
-│           └── widgets/
-│               ├── GitHubContributionChart.tsx  # GitHub 스타일 차트
-│               └── YearProgressWidget.tsx       # 연간 진행률
-└── public/
-    └── manifest.json          # PWA 매니페스트
-```
-
-## 📱 Screens
-
-1. **홈 (Home)** - 오늘의 퀘스트, 스트릭, 활동 기록
-2. **테크트리 (TechTree)** - 목표까지의 단계별 시각화
-3. **진행 (Progress)** - 상세 통계, 주간 차트, 뱃지
-4. **프로필 (Profile)** - 설정, 목표 변경
-
-## 🎨 Design Principles
-
-- 모바일 퍼스트 (max-width: 430px)
-- 라이트 테마 + Emerald 액센트
-- 부드러운 애니메이션 & 터치 피드백
-- 깔끔한 카드 UI
-
-## 📦 Scripts
-
+## Build
 ```bash
-npm run dev      # 개발 서버
-npm run build    # 프로덕션 빌드
-npm run preview  # 빌드 미리보기
+npm run build
 ```
 
-## 🌐 Deployment
+참고: 현재 환경에서는 PWA 서비스워커 단계에서 빌드 이슈가 발생할 수 있습니다(`vite-plugin-pwa`).
 
-### Vercel (추천)
-```bash
-npm i -g vercel
-vercel
-```
-
-### Netlify
-```bash
-npm i -g netlify-cli
-netlify deploy --prod
-```
-
-## 📄 License
-
-MIT License
-
----
-
-Made with ❤️ by Tyler & Poby
+## Hackathon Docs
+- One Pager: `/Users/taehyeonkim/Documents/New project/docs/HACKATHON_ONE_PAGER.md`
+- Prompt Pack: `/Users/taehyeonkim/Documents/New project/docs/GEMINI_PROMPTS.md`
+- 3-min Demo Script: `/Users/taehyeonkim/Documents/New project/docs/DEMO_SCRIPT_3MIN.md`

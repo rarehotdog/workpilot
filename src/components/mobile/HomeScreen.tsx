@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { Circle, CheckCircle2, Plus, ChevronRight, Sparkles, X, Share2 } from 'lucide-react';
+import { Circle, CheckCircle2, Plus, ChevronRight, Sparkles, X, Share2, Layers3, BrainCircuit, PlayCircle, Clock3, RefreshCw } from 'lucide-react';
 import type { UserProfile, Quest } from '../../App';
 import type { UserStats } from '../../lib/gamification';
 import Tready from '../character/Tready';
@@ -40,6 +40,8 @@ export default function HomeScreen({
   const today = new Date();
   const dayOfWeek = ['일', '월', '화', '수', '목', '금', '토'][today.getDay()];
   const completedCount = quests.filter(q => q.completed).length;
+  const nextQuest = quests.find(q => !q.completed) || quests[0];
+  const fallbackQuest = nextQuest?.alternative || '대체 퀘스트 자동 생성';
 
   // Year progress
   const startOfYear = new Date(today.getFullYear(), 0, 1);
@@ -49,7 +51,7 @@ export default function HomeScreen({
 
   // D-Day
   const getDDay = () => {
-    if (!profile.deadline || profile.deadline === '무제한') return 'NaN';
+    if (!profile.deadline || profile.deadline === '무제한') return '-';
     const deadline = new Date(profile.deadline);
     const diff = Math.ceil((deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     return diff > 0 ? `D-${diff}` : diff === 0 ? 'D-Day' : `D+${Math.abs(diff)}`;
@@ -144,8 +146,64 @@ export default function HomeScreen({
         <LifeCalendar />
       </motion.div>
 
+      {/* ── 3-Layer Widgets ── */}
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.22 }} className="mb-4">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-lg font-bold text-gray-900 tracking-snug">Pathfinder OS</h2>
+          <span className="text-12 text-[#9CA3AF]">Context → Think → Action</span>
+        </div>
+        <div className="space-y-2">
+          <div className="bg-white rounded-2xl p-4 border border-[#E5E7EB]">
+            <div className="flex items-center gap-2 mb-2">
+              <Layers3 className="w-4 h-4 text-blue-600" />
+              <p className="text-13 font-semibold text-gray-900">Layer 1. Context</p>
+            </div>
+            <p className="text-13 text-[#6B7280] leading-relaxed">
+              목표: <span className="font-medium text-gray-900">{profile.goal}</span> · 제약: <span className="font-medium text-gray-900">{profile.constraints}</span> · 에너지: <span className="font-medium text-gray-900">{energy ? `${energy}/5` : '미체크'}</span>
+            </p>
+          </div>
+
+          <div className="bg-white rounded-2xl p-4 border border-[#E5E7EB]">
+            <div className="flex items-center gap-2 mb-2">
+              <BrainCircuit className="w-4 h-4 text-violet-600" />
+              <p className="text-13 font-semibold text-gray-900">Layer 2. Think</p>
+            </div>
+            <p className="text-13 text-[#6B7280] leading-relaxed">
+              {aiMessage || '어제 기록과 누적 맥락을 분석해 오늘 최적 경로를 계산합니다.'}
+            </p>
+          </div>
+
+          <div className="bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl p-4 text-white">
+            <p className="text-13 font-semibold mb-2">Layer 3. Action</p>
+            <p className="text-15 font-semibold leading-snug mb-3">
+              {nextQuest ? nextQuest.title : '오늘의 첫 퀘스트를 생성하세요'}
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => nextQuest && onQuestToggle(nextQuest.id)}
+                className="flex-1 bg-white/95 text-emerald-700 rounded-xl py-2.5 text-13 font-semibold flex items-center justify-center gap-1.5"
+              >
+                <PlayCircle className="w-4 h-4" /> 시작하기
+              </button>
+              <button className="px-3 bg-white/20 rounded-xl text-12 font-medium flex items-center gap-1">
+                <Clock3 className="w-3.5 h-3.5" /> 나중에
+              </button>
+              {onQuestFail && nextQuest && (
+                <button
+                  onClick={() => onQuestFail(nextQuest.id)}
+                  className="px-3 bg-white/20 rounded-xl text-12 font-medium flex items-center gap-1"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" /> 대체
+                </button>
+              )}
+            </div>
+            <p className="text-12 text-white/80 mt-2">실패 시 자동 복구: {fallbackQuest}</p>
+          </div>
+        </div>
+      </motion.div>
+
       {/* ── Today's Quest ── */}
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.24 }} className="mb-4">
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.26 }} className="mb-4">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-bold text-gray-900 tracking-snug">Today's Quest</h2>
           <span className="text-14 text-[#9CA3AF]">{completedCount}/{quests.length} completed</span>
