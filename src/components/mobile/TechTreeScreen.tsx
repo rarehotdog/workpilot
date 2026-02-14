@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'motion/react';
 import { Trophy, Lock, RefreshCw, CheckCircle2, Circle, Loader2, Zap } from 'lucide-react';
 import type { UserProfile } from '../../App';
@@ -56,12 +56,30 @@ function createDefaultTree(goal: string): TechTreeResponse {
   };
 }
 
+function buildStatusMap(root: TechTreeNode): Record<string, TechTreeNode['status']> {
+  const map: Record<string, TechTreeNode['status']> = {};
+  const stack: TechTreeNode[] = [root];
+
+  while (stack.length > 0) {
+    const node = stack.pop();
+    if (!node) continue;
+    map[node.id] = node.status;
+    if (node.children) {
+      for (const child of node.children) stack.push(child);
+    }
+  }
+  return map;
+}
+
 export default function TechTreeScreen({ profile, techTree: initialTechTree, onTechTreeUpdate }: TechTreeScreenProps) {
   const [tree, setTree] = useState<TechTreeResponse>(
     initialTechTree || createDefaultTree(profile.goal)
   );
   const [isLoading, setIsLoading] = useState(false);
   const [hasGenerated, setHasGenerated] = useState(!!initialTechTree);
+  const [changedNodeIds, setChangedNodeIds] = useState<Set<string>>(new Set());
+  const [showRerouteBanner, setShowRerouteBanner] = useState(false);
+  const prevStatusMapRef = useRef<Record<string, TechTreeNode['status']>>({});
 
   // Load saved tree from localStorage
   useEffect(() => {
@@ -74,6 +92,33 @@ export default function TechTreeScreen({ profile, techTree: initialTechTree, onT
       } catch { /* ignore */ }
     }
   }, []);
+
+  useEffect(() => {
+    const nextStatusMap = buildStatusMap(tree.root);
+    const previousStatusMap = prevStatusMapRef.current;
+    const changed = new Set<string>();
+
+    for (const [id, status] of Object.entries(nextStatusMap)) {
+      if (previousStatusMap[id] && previousStatusMap[id] !== status) {
+        changed.add(id);
+      }
+    }
+
+    prevStatusMapRef.current = nextStatusMap;
+
+    if (changed.size > 0) {
+      setChangedNodeIds(changed);
+      setShowRerouteBanner(true);
+
+      const clearId = window.setTimeout(() => setChangedNodeIds(new Set()), 1800);
+      const hideId = window.setTimeout(() => setShowRerouteBanner(false), 2600);
+      return () => {
+        window.clearTimeout(clearId);
+        window.clearTimeout(hideId);
+      };
+    }
+    return;
+  }, [tree]);
 
   // Generate tree with AI
   const handleGenerateTree = useCallback(async () => {
@@ -207,6 +252,18 @@ export default function TechTreeScreen({ profile, techTree: initialTechTree, onT
         </div>
       </motion.div>
 
+      {/* ── Reroute Banner ── */}
+      {showRerouteBanner && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 8 }}
+          className="bg-amber-50 border border-amber-200 rounded-2xl p-3 mb-4"
+        >
+          <p className="text-13 text-amber-700 font-medium">경로가 업데이트되었습니다. 오늘의 최적 루트로 재배치했어요.</p>
+        </motion.div>
+      )}
+
       {/* ── Loading State ── */}
       {isLoading && (
         <motion.div
@@ -255,7 +312,7 @@ export default function TechTreeScreen({ profile, techTree: initialTechTree, onT
                     : phase.status === 'in_progress'
                     ? 'bg-white border-amber-200'
                     : 'bg-gray-50/50 border-[#E5E7EB]'
-                }`}>
+                } ${changedNodeIds.has(phase.id) ? 'ring-2 ring-violet-300' : ''}`}>
                   {/* Phase header */}
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2.5">
@@ -290,14 +347,24 @@ export default function TechTreeScreen({ profile, techTree: initialTechTree, onT
                   </div>
 
                   {/* Phase progress bar */}
-                  <div className="h-1 bg-black/5 rounded-full overflow-hidden mb-3">
-                    <div
+                  <div className="h-1 bg-black/5 rounded-full overflow-hidden mb-3 relative">
+                    <motion.div
                       className={`h-full rounded-full transition-all ${
                         phase.status === 'completed' ? 'bg-emerald-500' :
                         phase.status === 'in_progress' ? 'bg-amber-400' : 'bg-gray-300'
                       }`}
-                      style={{ width: `${phaseProgress}%` }}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${phaseProgress}%` }}
+                      transition={{ duration: 0.55 }}
                     />
+                    {phase.status === 'in_progress' && (
+                      <motion.div
+                        className="absolute top-0 h-full w-10 bg-gradient-to-r from-transparent via-white/60 to-transparent"
+                        initial={{ x: '-110%' }}
+                        animate={{ x: '220%' }}
+                        transition={{ duration: 1.6, repeat: Infinity, ease: 'linear' }}
+                      />
+                    )}
                   </div>
 
                   {/* Sub-quests */}
@@ -307,8 +374,15 @@ export default function TechTreeScreen({ profile, techTree: initialTechTree, onT
                         key={quest.id}
                         className={`flex items-center gap-2.5 py-1.5 px-2 rounded-lg ${
                           quest.status === 'locked' ? 'opacity-40' : ''
-                        }`}
+                        } ${changedNodeIds.has(quest.id) ? 'bg-violet-50' : ''}`}
                       >
+                        {changedNodeIds.has(quest.id) && (
+                          <motion.div
+                            initial={{ scale: 0.4, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            className="w-1.5 h-1.5 rounded-full bg-violet-500"
+                          />
+                        )}
                         <div className={`w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 ${
                           quest.status === 'completed' ? 'bg-emerald-500' :
                           quest.status === 'in_progress' ? 'bg-amber-400' : 'bg-gray-200'
@@ -336,7 +410,14 @@ export default function TechTreeScreen({ profile, techTree: initialTechTree, onT
                 {/* Connector */}
                 {pi < (tree.root.children?.length || 0) - 1 && (
                   <div className="flex justify-center py-1">
-                    <div className="w-px h-4 bg-[#E5E7EB]" />
+                    <div className="w-px h-4 bg-[#E5E7EB] relative overflow-hidden">
+                      <motion.div
+                        className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-b from-violet-300 to-transparent"
+                        initial={{ y: -10 }}
+                        animate={{ y: 18 }}
+                        transition={{ duration: 1.3, repeat: Infinity, ease: 'linear' }}
+                      />
+                    </div>
                   </div>
                 )}
               </motion.div>
