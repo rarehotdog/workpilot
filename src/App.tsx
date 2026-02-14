@@ -84,6 +84,22 @@ interface VoiceCheckInEntry {
   createdAt: string;
 }
 
+function parseMinutes(duration: string): number | null {
+  const m = duration.match(/(\d+)/);
+  if (!m) return null;
+  return parseInt(m[1], 10);
+}
+
+function extractVoiceEnergyHint(text: string): number | undefined {
+  const t = text.toLowerCase();
+  const lowSignals = ['피곤', '지침', '힘들', '기운이 없', '무기력', '바빠', '스트레스'];
+  const highSignals = ['상쾌', '집중 잘', '컨디션 좋', '에너지 좋', '의욕', '할 수 있'];
+
+  if (lowSignals.some((s) => t.includes(s))) return 2;
+  if (highSignals.some((s) => t.includes(s))) return 4;
+  return undefined;
+}
+
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('home');
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -112,6 +128,42 @@ export default function App() {
   const [futureSelfPrompt, setFutureSelfPrompt] = useState('');
   const [isVoiceCheckInOpen, setIsVoiceCheckInOpen] = useState(false);
   const [latestVoiceCheckIn, setLatestVoiceCheckIn] = useState<VoiceCheckInEntry | null>(null);
+
+  const adaptQuestsForContext = useCallback((inputQuests: Quest[]): Quest[] => {
+    if (!inputQuests.length) return inputQuests;
+
+    const explicitEnergy = energy;
+    const voiceHint = latestVoiceCheckIn?.text ? extractVoiceEnergyHint(latestVoiceCheckIn.text) : undefined;
+    const effectiveEnergy = explicitEnergy ?? voiceHint;
+    const isLowEnergyMode = typeof effectiveEnergy === 'number' && effectiveEnergy <= 2;
+
+    if (!isLowEnergyMode) return inputQuests;
+
+    let softened = false;
+    const adjusted = inputQuests.map((quest, idx) => {
+      const minutes = parseMinutes(quest.duration);
+      const shouldSoften = !softened && !quest.completed && (idx === 0 || (minutes !== null && minutes > 15));
+      if (!shouldSoften) return quest;
+
+      softened = true;
+      const shortened = minutes ? Math.max(5, Math.min(10, Math.floor(minutes / 2))) : 10;
+      return {
+        ...quest,
+        duration: `${shortened}분`,
+        alternative: quest.alternative || `${shortened}분 버전으로 아주 작게 시작하기`,
+        description: `${quest.description ? `${quest.description} · ` : ''}저에너지 모드로 난이도를 자동 조정했어요.`,
+      };
+    });
+
+    return adjusted;
+  }, [energy, latestVoiceCheckIn]);
+
+  const persistTodayQuests = useCallback((quests: Quest[]) => {
+    setTodayQuests(quests);
+    localStorage.setItem('ltr_quests', JSON.stringify(quests));
+    localStorage.setItem('ltr_questDate', new Date().toISOString().split('T')[0]);
+    if (isSupabaseConfigured()) saveQuests(quests);
+  }, []);
 
   // ── Load state ──
   useEffect(() => {
@@ -201,9 +253,7 @@ export default function App() {
     try {
       const aiQuests = await generatePersonalizedQuests(profile, techTree);
       if (aiQuests && aiQuests.length > 0) {
-        setTodayQuests(aiQuests);
-        localStorage.setItem('ltr_quests', JSON.stringify(aiQuests));
-        localStorage.setItem('ltr_questDate', new Date().toISOString().split('T')[0]);
+        persistTodayQuests(adaptQuestsForContext(aiQuests));
       } else setDefaultQuests(profile);
     } catch { setDefaultQuests(profile); }
     finally { setIsGeneratingQuests(false); }
@@ -215,9 +265,7 @@ export default function App() {
       { id: '2', title: '집중 시간 갖기', duration: '25분', completed: false, timeOfDay: 'afternoon', description: '포모도로 타이머로 집중해보세요' },
       { id: '3', title: '하루 되돌아보기', duration: '10분', completed: false, timeOfDay: 'evening', description: '오늘 무엇을 이뤘는지 기록해보세요' },
     ];
-    setTodayQuests(quests);
-    localStorage.setItem('ltr_quests', JSON.stringify(quests));
-    localStorage.setItem('ltr_questDate', new Date().toISOString().split('T')[0]);
+    persistTodayQuests(adaptQuestsForContext(quests));
   };
 
   // ── Add XP and check badges/level ──
@@ -277,10 +325,7 @@ export default function App() {
           getAIInsight(newProfile, 0),
         ]);
         if (aiQuests?.length) {
-          setTodayQuests(aiQuests);
-          localStorage.setItem('ltr_quests', JSON.stringify(aiQuests));
-          localStorage.setItem('ltr_questDate', new Date().toISOString().split('T')[0]);
-          if (isSupabaseConfigured()) saveQuests(aiQuests);
+          persistTodayQuests(adaptQuestsForContext(aiQuests));
         } else setDefaultQuests(newProfile);
         if (aiTree) {
           setTechTree(aiTree);
@@ -302,14 +347,12 @@ export default function App() {
     try {
       const aiQuests = await generatePersonalizedQuests(userProfile, techTree);
       if (aiQuests?.length) {
-        setTodayQuests(aiQuests);
-        localStorage.setItem('ltr_quests', JSON.stringify(aiQuests));
-        localStorage.setItem('ltr_questDate', new Date().toISOString().split('T')[0]);
+        persistTodayQuests(adaptQuestsForContext(aiQuests));
         setAiMessage('새로운 퀘스트가 준비되었어요! ✨');
       }
     } catch { setAiMessage('퀘스트 생성에 실패했어요.'); }
     finally { setIsGeneratingQuests(false); setTimeout(() => setAiMessage(null), 3000); }
-  }, [userProfile, techTree]);
+  }, [userProfile, techTree, adaptQuestsForContext, persistTodayQuests]);
 
   // ── Quest toggle ──
   const handleQuestToggle = useCallback((questId: string) => {
@@ -575,6 +618,8 @@ export default function App() {
             onSave={(entry) => {
               setLatestVoiceCheckIn(entry);
               localStorage.setItem('ltr_voiceCheckIn', JSON.stringify(entry));
+              const adjusted = adaptQuestsForContext(todayQuests);
+              persistTodayQuests(adjusted);
               setAiMessage('음성 체크인이 저장됐어요 🎙️');
               setTimeout(() => setAiMessage(null), 2500);
             }}
