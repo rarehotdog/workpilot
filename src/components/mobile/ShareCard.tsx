@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Download, Share2 } from 'lucide-react';
-import type { UserProfile } from '../../../App';
+import type { UserProfile } from '../../App';
 
 interface ShareCardProps {
   isOpen: boolean;

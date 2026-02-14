@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, ArrowRight, Sparkles, Target, Clock, AlertTriangle, User } from 'lucide-react';
-import type { UserProfile } from '../../App';
+import type { UserProfile } from '../App';
 
 interface OnboardingFlowProps {
   onComplete: (profile: UserProfile) => void;

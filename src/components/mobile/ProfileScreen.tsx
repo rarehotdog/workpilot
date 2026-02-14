@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
 import { User, Target, Clock, Bell, ChevronRight, Sparkles, Trash2, Download, Info } from 'lucide-react';
-import type { UserProfile } from '../../../App';
+import type { UserProfile } from '../../App';
 import { isGeminiConfigured } from '../../lib/gemini';
 import { isSupabaseConfigured } from '../../lib/supabase';
 

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'motion/react';
 import { Trophy, Lock, RefreshCw, CheckCircle2, Circle, Loader2, Zap } from 'lucide-react';
-import type { UserProfile } from '../../../App';
+import type { UserProfile } from '../../App';
 import { generateTechTree, isGeminiConfigured, type TechTreeNode, type TechTreeResponse } from '../../lib/gemini';
 
 interface TechTreeScreenProps {

@@ -1,6 +1,6 @@
 import { motion } from 'motion/react';
 import { Circle, CheckCircle2, Plus, ChevronRight, Sparkles, X, Share2 } from 'lucide-react';
-import type { UserProfile, Quest } from '../../../App';
+import type { UserProfile, Quest } from '../../App';
 import type { UserStats } from '../../lib/gamification';
 import Tready from '../character/Tready';
 import XPBar from '../gamification/XPBar';

@@ -1,31 +1,31 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import confetti from 'canvas-confetti';
-import OnboardingFlow from './src/components/OnboardingFlow';
-import HomeScreen from './src/components/mobile/HomeScreen';
-import TechTreeScreen from './src/components/mobile/TechTreeScreen';
-import ProgressScreen from './src/components/mobile/ProgressScreen';
-import ProfileScreen from './src/components/mobile/ProfileScreen';
-import BottomNavigation from './src/components/mobile/BottomNavigation';
-import FailureSheet from './src/components/mobile/FailureSheet';
-import EnergyCheckIn from './src/components/mobile/EnergyCheckIn';
-import ShareCard from './src/components/mobile/ShareCard';
-import LevelUpModal from './src/components/gamification/LevelUpModal';
-import { BadgeUnlockModal } from './src/components/gamification/BadgeDisplay';
+import OnboardingFlow from './components/OnboardingFlow';
+import HomeScreen from './components/mobile/HomeScreen';
+import TechTreeScreen from './components/mobile/TechTreeScreen';
+import ProgressScreen from './components/mobile/ProgressScreen';
+import ProfileScreen from './components/mobile/ProfileScreen';
+import BottomNavigation from './components/mobile/BottomNavigation';
+import FailureSheet from './components/mobile/FailureSheet';
+import EnergyCheckIn from './components/mobile/EnergyCheckIn';
+import ShareCard from './components/mobile/ShareCard';
+import LevelUpModal from './components/gamification/LevelUpModal';
+import { BadgeUnlockModal } from './components/gamification/BadgeDisplay';
 import {
   generatePersonalizedQuests,
   generateTechTree,
   getAIInsight,
   isGeminiConfigured,
   type TechTreeResponse,
-} from './src/lib/gemini';
+} from './lib/gemini';
 import {
   saveProfile,
   saveQuests,
   saveTechTree,
   saveQuestHistory,
   isSupabaseConfigured,
-} from './src/lib/supabase';
+} from './lib/supabase';
 import {
   loadStats,
   saveStats,
@@ -39,7 +39,7 @@ import {
   calculateEnergyCheckXP,
   type UserStats,
   type Badge,
-} from './src/lib/gamification';
+} from './lib/gamification';
 
 type Screen = 'onboarding' | 'home' | 'techTree' | 'progress' | 'profile';
 

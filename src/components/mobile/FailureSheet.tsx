@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Loader2, Heart, ArrowRight } from 'lucide-react';
-import type { UserProfile, Quest } from '../../../App';
+import type { UserProfile, Quest } from '../../App';
 import { analyzeFailure, isGeminiConfigured, type FailureAnalysis } from '../../lib/gemini';
 
 interface FailureSheetProps {

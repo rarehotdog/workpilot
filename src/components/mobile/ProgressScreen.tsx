@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { TrendingUp, Target, Flame, Calendar, Award, BarChart3 } from 'lucide-react';
-import type { UserProfile } from '../../../App';
+import type { UserProfile } from '../../App';
 import type { UserStats } from '../../lib/gamification';
 import { BadgeGrid } from '../gamification/BadgeDisplay';
 import XPBar from '../gamification/XPBar';
