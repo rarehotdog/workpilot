@@ -13,7 +13,6 @@ import ShareCard from './components/mobile/ShareCard';
 import FutureSelfVisualizer from './components/mobile/FutureSelfVisualizer';
 import VoiceCheckIn from './components/mobile/VoiceCheckIn';
 import LevelUpModal from './components/gamification/LevelUpModal';
-import { BadgeUnlockModal } from './components/gamification/BadgeDisplay';
 import {
   generatePersonalizedQuests,
   generateTechTree,
@@ -31,16 +30,12 @@ import {
 import {
   loadStats,
   saveStats,
-  loadEarnedBadges,
-  saveEarnedBadges,
-  checkNewBadges,
   getLevelFromXP,
   calculateQuestXP,
   calculatePerfectDayXP,
   calculateRecoveryXP,
   calculateEnergyCheckXP,
   type UserStats,
-  type Badge,
 } from './lib/gamification';
 
 type Screen = 'onboarding' | 'home' | 'techTree' | 'progress' | 'profile';
@@ -116,11 +111,9 @@ export default function App() {
 
   // Gamification
   const [stats, setStats] = useState<UserStats>(loadStats());
-  const [earnedBadgeIds, setEarnedBadgeIds] = useState<string[]>(loadEarnedBadges());
 
   // Modals
   const [levelUpInfo, setLevelUpInfo] = useState<{ level: number; xp: number } | null>(null);
-  const [newBadge, setNewBadge] = useState<Badge | null>(null);
   const [isEnergyOpen, setIsEnergyOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [energy, setEnergy] = useState<number | undefined>(undefined);
@@ -282,19 +275,10 @@ export default function App() {
       setLevelUpInfo({ level: newLevel, xp: amount });
     }
 
-    // Check badges
-    const newBadges = checkNewBadges(updated, earnedBadgeIds);
-    if (newBadges.length > 0) {
-      const updatedIds = [...earnedBadgeIds, ...newBadges.map(b => b.id)];
-      setEarnedBadgeIds(updatedIds);
-      saveEarnedBadges(updatedIds);
-      setTimeout(() => setNewBadge(newBadges[0]), levelUpInfo ? 2000 : 500);
-    }
-
     saveStats(updated);
     setStats(updated);
     return updated;
-  }, [earnedBadgeIds, levelUpInfo]);
+  }, []);
 
   // ── Energy check ──
   const handleEnergySubmit = (energyLevel: number, mood: string) => {
@@ -571,7 +555,7 @@ export default function App() {
         )}
         {currentScreen === 'progress' && userProfile && (
           <motion.div key="progress" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="pt-11 pb-24">
-            <ProgressScreen profile={userProfile} completionRate={completionRate} completedCount={completedCount} totalCount={totalCount} stats={stats} earnedBadgeIds={earnedBadgeIds} />
+            <ProgressScreen profile={userProfile} completionRate={completionRate} completedCount={completedCount} totalCount={totalCount} stats={stats} />
           </motion.div>
         )}
         {currentScreen === 'profile' && userProfile && (
@@ -641,11 +625,6 @@ export default function App() {
             onClose={() => setLevelUpInfo(null)}
             newLevel={levelUpInfo?.level || 1}
             xpGained={levelUpInfo?.xp || 0}
-          />
-          <BadgeUnlockModal
-            badge={newBadge}
-            isOpen={!!newBadge}
-            onClose={() => setNewBadge(null)}
           />
         </>
       )}

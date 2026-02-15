@@ -3,7 +3,6 @@ import { motion } from 'motion/react';
 import { TrendingUp, Target, Flame, Calendar, Award, BarChart3 } from 'lucide-react';
 import type { UserProfile } from '../../App';
 import type { UserStats } from '../../lib/gamification';
-import { BadgeGrid } from '../gamification/BadgeDisplay';
 import XPBar from '../gamification/XPBar';
 
 interface ProgressScreenProps {
@@ -12,7 +11,6 @@ interface ProgressScreenProps {
   completedCount: number;
   totalCount: number;
   stats?: UserStats;
-  earnedBadgeIds?: string[];
 }
 
 export default function ProgressScreen({
@@ -21,7 +19,6 @@ export default function ProgressScreen({
   completedCount,
   totalCount,
   stats,
-  earnedBadgeIds = [],
 }: ProgressScreenProps) {
   // Load quest history from localStorage
   const [weeklyData, setWeeklyData] = useState<{ day: string; completed: number; total: number }[]>([]);
@@ -229,18 +226,8 @@ export default function ProgressScreen({
         </motion.div>
       )}
 
-      {/* ── Badges ── */}
+      {/* ── Streak Milestone ── */}
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-        className="bg-white rounded-2xl p-4 border border-[#F3F4F6] mb-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-15 font-semibold text-gray-900">뱃지</h3>
-          <span className="text-13 text-[#9CA3AF]">{earnedBadgeIds.length}/12 획득</span>
-        </div>
-        <BadgeGrid earnedBadgeIds={earnedBadgeIds} />
-      </motion.div>
-
-      {/* ── Achievement ── */}
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.34 }}
         className="bg-gradient-to-r from-amber-50 to-yellow-50 rounded-2xl p-4 border border-amber-100">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 bg-gradient-to-br from-amber-400 to-yellow-500 rounded-xl flex items-center justify-center">

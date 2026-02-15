@@ -7,16 +7,6 @@ interface OnboardingFlowProps {
   onComplete: (profile: UserProfile) => void;
 }
 
-// Goal presets for quick selection
-const goalPresets = [
-  { emoji: '🎓', label: '시험/합격', example: 'TOEIC 900점, 자격증 취득' },
-  { emoji: '💪', label: '건강/운동', example: '10kg 감량, 마라톤 완주' },
-  { emoji: '💻', label: '커리어/기술', example: '코딩 마스터, 이직 성공' },
-  { emoji: '📖', label: '학습/성장', example: '책 50권, 새 언어 배우기' },
-  { emoji: '💰', label: '재테크/자산', example: '1000만원 모으기, 투자 시작' },
-  { emoji: '🎨', label: '창작/취미', example: '앱 출시, 그림 100장' },
-];
-
 const questions = [
   {
     id: 'name',
@@ -161,29 +151,9 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             />
           )}
 
-          {/* Goal with Presets */}
+          {/* Goal */}
           {currentQuestion.type === 'goal' && (
             <div>
-              {/* Presets */}
-              <div className="grid grid-cols-2 gap-2 mb-4">
-                {goalPresets.map(preset => (
-                  <button
-                    key={preset.label}
-                    onClick={() => setAnswers({ ...answers, goal: preset.example })}
-                    className={`p-3 rounded-14 border-2 text-left transition-all ${
-                      answers.goal === preset.example
-                        ? 'border-[#7C3AED] bg-purple-50'
-                        : 'border-[#F3F4F6] hover:border-purple-200'
-                    }`}
-                  >
-                    <span className="text-xl">{preset.emoji}</span>
-                    <p className="text-13 font-medium text-gray-900 mt-1">{preset.label}</p>
-                    <p className="text-11 text-[#9CA3AF] mt-0.5">{preset.example}</p>
-                  </button>
-                ))}
-              </div>
-
-              {/* Custom input */}
               <textarea
                 value={answers.goal}
                 onChange={(e) => setAnswers({ ...answers, goal: e.target.value })}
