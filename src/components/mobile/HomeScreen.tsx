@@ -152,11 +152,11 @@ export default function HomeScreen({
         <GitHubContributionChart data={buildContributionData(stats.currentStreak + profile.currentDay)} streak={stats.currentStreak} />
 
         <Card className="rounded-2xl border-0 bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg">
-          <CardContent className="p-5">
-            <p className="mb-1 text-sm text-white/80">Current Goal</p>
+          <CardContent className="card-padding">
+            <p className="caption-12 mb-1 text-white/80">Current Goal</p>
             <h3 className="heading-3 mb-3">{profile.goal}</h3>
             <Progress value={completionRate} className="h-2 bg-white/25 [&>div]:bg-white" />
-            <div className="mt-2 flex items-center justify-between text-sm text-white/85">
+            <div className="mt-2 flex items-center justify-between body-13 text-white/85">
               <span>Day {profile.currentDay}</span>
               <span>{profile.deadline === '무제한' ? '무제한' : getDDay()}</span>
             </div>
@@ -199,15 +199,15 @@ export default function HomeScreen({
                     <div className="pt-0.5">
                       {quest.completed ? <CheckCircle2 className="h-5 w-5 text-green-500" /> : <Circle className="h-5 w-5 text-gray-300" />}
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <h4 className={`mb-1 text-sm font-semibold ${quest.completed ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
-                        {quest.title}
-                      </h4>
-                      {quest.description ? (
-                        <p className={`mb-2 text-xs ${quest.completed ? 'text-gray-300' : 'text-gray-600'}`}>{quest.description}</p>
-                      ) : null}
-                      <Badge className="rounded-full bg-blue-50 text-blue-600">{quest.duration}</Badge>
-                    </div>
+                  <div className="min-w-0 flex-1">
+                    <h4 className={`mb-1 body-15 font-semibold ${quest.completed ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                      {quest.title}
+                    </h4>
+                    {quest.description ? (
+                      <p className={`mb-2 body-13 ${quest.completed ? 'text-gray-300' : 'text-gray-600'}`}>{quest.description}</p>
+                    ) : null}
+                    <Badge className="rounded-full bg-blue-50 text-blue-600">{quest.duration}</Badge>
+                  </div>
                     {!quest.completed && onQuestFail ? (
                       <Button
                         onClick={(event) => {

@@ -90,7 +90,7 @@ export default function ProgressScreen({ profile, completionRate, completedCount
             <div className="absolute inset-0 bg-black/20" />
           </div>
 
-          <CardContent className="relative z-10 space-y-4 p-5">
+          <CardContent className="relative z-10 space-y-4 card-padding">
             <div className="flex items-start justify-between">
               <div>
                 <p className="mb-1 text-xs font-medium text-white/90">Year Progress</p>
@@ -117,15 +117,15 @@ export default function ProgressScreen({ profile, completionRate, completedCount
 
             <div className="grid grid-cols-3 gap-2">
               <div className="rounded-lg bg-white/15 p-2.5">
-                <p className="mb-0.5 text-[10px] text-white/70">Day</p>
+                <p className="caption-11 mb-0.5 text-white/70">Day</p>
                 <p className="text-lg font-bold text-white">{profile.currentDay}</p>
               </div>
               <div className="rounded-lg bg-white/15 p-2.5">
-                <p className="mb-0.5 text-[10px] text-white/70">Completion</p>
+                <p className="caption-11 mb-0.5 text-white/70">Completion</p>
                 <p className="text-lg font-bold text-white">{avgCompletionRate.toFixed(0)}%</p>
               </div>
               <div className="rounded-lg bg-white/15 p-2.5">
-                <p className="mb-0.5 text-[10px] text-white/70">Streak</p>
+                <p className="caption-11 mb-0.5 text-white/70">Streak</p>
                 <p className="text-lg font-bold text-white">{stats?.currentStreak ?? profile.streak}</p>
               </div>
             </div>
@@ -133,7 +133,7 @@ export default function ProgressScreen({ profile, completionRate, completedCount
         </Card>
 
         <Card className="rounded-2xl border-gray-100 shadow-sm">
-          <CardContent className="p-5">
+          <CardContent className="card-padding">
             <h3 className="heading-3 mb-4 text-gray-900">Weekly Overview</h3>
             <div className="relative mb-3 h-40">
               <div className="absolute inset-0 flex items-end justify-around gap-1">
@@ -153,15 +153,15 @@ export default function ProgressScreen({ profile, completionRate, completedCount
 
             <div className="grid grid-cols-3 gap-3 border-t border-gray-100 pt-3">
               <div className="text-center">
-                <p className="mb-1 text-xs text-gray-500">Completed</p>
+                <p className="caption-12 mb-1 text-gray-500">Completed</p>
                 <p className="text-lg font-bold text-gray-900">{last7Days.reduce((sum, d) => sum + d.completed, 0)}</p>
               </div>
               <div className="border-x border-gray-100 text-center">
-                <p className="mb-1 text-xs text-gray-500">Total</p>
+                <p className="caption-12 mb-1 text-gray-500">Total</p>
                 <p className="text-lg font-bold text-gray-900">{last7Days.reduce((sum, d) => sum + d.total, 0)}</p>
               </div>
               <div className="text-center">
-                <p className="mb-1 text-xs text-gray-500">Avg Rate</p>
+                <p className="caption-12 mb-1 text-gray-500">Avg Rate</p>
                 <p className="text-lg font-bold text-blue-500">{avgCompletionRate.toFixed(0)}%</p>
               </div>
             </div>
@@ -169,7 +169,7 @@ export default function ProgressScreen({ profile, completionRate, completedCount
         </Card>
 
         <Card className="rounded-2xl border-gray-100 shadow-sm">
-          <CardContent className="p-5">
+          <CardContent className="card-padding">
             <h3 className="heading-3 mb-4 text-gray-900">Monthly Breakdown</h3>
             <div className="space-y-3">
               {monthlyStats.map((month, index) => (

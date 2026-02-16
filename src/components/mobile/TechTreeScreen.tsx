@@ -201,15 +201,15 @@ export default function TechTreeScreen({ profile, techTree: initialTechTree, onT
           animate={{ opacity: 1, y: 0 }}
           onClick={handleGenerateTree}
           disabled={isLoading}
-          className="w-full bg-gradient-to-r from-[#7C3AED] to-indigo-500 rounded-2xl p-4 mb-4 text-left"
+          className="w-full bg-gradient-to-r from-[#7C3AED] to-indigo-500 rounded-2xl card-padding mb-4 text-left"
         >
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
               <Zap className="w-5 h-5 text-white" />
             </div>
             <div className="flex-1">
-              <p className="text-15 font-bold text-white">AI 테크트리 생성</p>
-              <p className="text-13 text-white/70">"{profile.goal}" 맞춤 여정을 설계합니다</p>
+              <p className="body-15 font-bold text-white">AI 테크트리 생성</p>
+              <p className="body-13 text-white/70">"{profile.goal}" 맞춤 여정을 설계합니다</p>
             </div>
           </div>
         </motion.button>
@@ -223,25 +223,25 @@ export default function TechTreeScreen({ profile, techTree: initialTechTree, onT
         className="mb-4"
       >
         <Card className="relative overflow-hidden rounded-3xl border-0 bg-gradient-to-br from-violet-500 to-purple-600 text-white">
-          <CardContent className="p-5">
+          <CardContent className="card-padding">
             <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/10" />
             <div className="relative z-10 mb-3 flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20">
                 <Trophy className="h-5 w-5 text-white" />
               </div>
               <div className="flex-1">
-                <p className="text-12 text-white/60">최종 목표</p>
-                <p className="text-15 font-bold leading-snug">{tree.root.title}</p>
+                <p className="caption-12 text-white/60">최종 목표</p>
+                <p className="body-15 font-bold leading-snug">{tree.root.title}</p>
               </div>
             </div>
 
             <div className="relative z-10">
-              <div className="mb-1 flex justify-between text-13">
+              <div className="mb-1 flex justify-between body-13">
                 <span className="text-white/70">전체 진행률</span>
                 <span className="font-semibold">{progressPercent}%</span>
               </div>
               <Progress value={progressPercent} className="h-1.5 bg-white/20 [&>div]:bg-white" />
-              <div className="mt-1.5 flex justify-between text-12 text-white/50">
+              <div className="mt-1.5 flex justify-between caption-12 text-white/50">
                 <span>{completed}/{total} 완료</span>
                 <span>예상: {tree.estimatedCompletionDate}</span>
               </div>
@@ -256,9 +256,9 @@ export default function TechTreeScreen({ profile, techTree: initialTechTree, onT
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 8 }}
-          className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-3"
+          className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 card-padding-sm"
         >
-          <p className="text-13 font-medium text-amber-700">경로가 업데이트되었습니다. 오늘의 최적 루트로 재배치했어요.</p>
+          <p className="body-13 font-medium text-amber-700">경로가 업데이트되었습니다. 오늘의 최적 루트로 재배치했어요.</p>
         </motion.div>
       )}
 
@@ -268,8 +268,8 @@ export default function TechTreeScreen({ profile, techTree: initialTechTree, onT
           <Card className="rounded-2xl border border-[#F3F4F6] bg-white">
             <CardContent className="flex flex-col items-center p-8">
               <div className="mb-3 h-10 w-10 animate-spin rounded-full border-2 border-[#7C3AED] border-t-transparent" />
-              <p className="mb-1 text-15 font-semibold text-gray-900">AI가 여정을 설계하고 있어요</p>
-              <p className="text-13 text-[#9CA3AF]">"{profile.goal}" 분석 중...</p>
+              <p className="mb-1 body-15 font-semibold text-gray-900">AI가 여정을 설계하고 있어요</p>
+              <p className="body-13 text-[#9CA3AF]">"{profile.goal}" 분석 중...</p>
             </CardContent>
           </Card>
         </motion.div>
@@ -277,18 +277,18 @@ export default function TechTreeScreen({ profile, techTree: initialTechTree, onT
 
       {/* ── Legend ── */}
       <Card className="mb-4 rounded-2xl border border-[#F3F4F6] bg-white">
-        <CardContent className="flex items-center gap-4 p-4">
+        <CardContent className="flex items-center gap-4 card-padding">
           <div className="flex items-center gap-1.5">
             <div className="h-3 w-3 rounded-full bg-emerald-500" />
-            <span className="text-12 text-[#6B7280]">완료</span>
+            <span className="caption-12 text-[#6B7280]">완료</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="h-3 w-3 rounded-full bg-amber-400" />
-            <span className="text-12 text-[#6B7280]">진행중</span>
+            <span className="caption-12 text-[#6B7280]">진행중</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="h-3 w-3 rounded-full bg-gray-300" />
-            <span className="text-12 text-[#6B7280]">잠김</span>
+            <span className="caption-12 text-[#6B7280]">잠김</span>
           </div>
         </CardContent>
       </Card>
@@ -332,15 +332,15 @@ export default function TechTreeScreen({ profile, techTree: initialTechTree, onT
                         )}
                       </div>
                       <div>
-                          <p className={`text-15 font-semibold leading-[1.32] ${
+                          <p className={`body-15 font-semibold ${
                           phase.status === 'locked' ? 'text-gray-400' : 'text-gray-900'
                         }`}>{phase.title}</p>
                         {phase.estimatedDays && (
-                          <p className="text-12 leading-[1.38] text-[#9CA3AF]">{phase.estimatedDays}일 예상</p>
+                          <p className="caption-12 text-[#9CA3AF]">{phase.estimatedDays}일 예상</p>
                         )}
                       </div>
                     </div>
-                    <span className={`text-13 font-semibold ${
+                    <span className={`body-13 font-semibold ${
                       phase.status === 'completed' ? 'text-emerald-600' :
                       phase.status === 'in_progress' ? 'text-amber-600' : 'text-gray-400'
                     }`}>{phaseProgress}%</span>
@@ -395,12 +395,12 @@ export default function TechTreeScreen({ profile, techTree: initialTechTree, onT
                             <Lock className="w-2.5 h-2.5 text-gray-400" />
                           )}
                         </div>
-                        <span className={`text-13 leading-[1.42] ${
+                        <span className={`body-13 ${
                           quest.status === 'completed' ? 'text-emerald-700 line-through' :
                           quest.status === 'in_progress' ? 'text-gray-900 font-medium' : 'text-gray-400'
                         }`}>{quest.title}</span>
                         {quest.estimatedDays && (
-                          <span className="text-11 text-[#9CA3AF] ml-auto">{quest.estimatedDays}d</span>
+                          <span className="caption-11 text-[#9CA3AF] ml-auto">{quest.estimatedDays}d</span>
                         )}
                       </div>
                     ))}

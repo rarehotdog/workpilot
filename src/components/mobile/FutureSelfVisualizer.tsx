@@ -80,17 +80,17 @@ export default function FutureSelfVisualizer({
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 placeholder="예) 올해 10kg 감량해서 하프 마라톤 완주"
-                className="input-surface h-24 resize-none p-4 leading-relaxed"
+                className="input-surface body-14 h-24 resize-none p-4"
               />
 
               <Card
                 className="relative mb-5 mt-4 overflow-hidden rounded-3xl border-0 text-white"
                 style={{ background: `linear-gradient(135deg, ${palette[0]} 0%, ${palette[1]} 55%, ${palette[2]} 100%)` }}
               >
-                <CardContent className="relative p-5">
+                <CardContent className="relative card-padding">
                   <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-white/20" />
                   <p className="caption-12 mb-1 text-white/80">Vision Card</p>
-                  <p className="text-18 mb-3 pr-6 font-bold leading-tight">{visionTitle}</p>
+                  <p className="heading-3 mb-3 pr-6">{visionTitle}</p>
                   <p className="caption-12 text-white/85">{userName} · {goal}</p>
                 </CardContent>
               </Card>

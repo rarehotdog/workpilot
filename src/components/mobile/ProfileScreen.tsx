@@ -39,14 +39,14 @@ export default function ProfileScreen({ profile, onStartCustomization, isCustomi
 
       <div className="screen-wrap-tight space-y-4">
         <Card className="rounded-2xl border-gray-100 shadow-sm">
-          <CardContent className="space-y-4 p-5">
+          <CardContent className="space-y-4 card-padding">
             <div className="flex items-center gap-4">
               <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-500 text-xl font-bold text-white">
                 {profile.name ? profile.name[0].toUpperCase() : 'ツ'}
               </div>
               <div className="flex-1">
                 <h2 className="heading-3">{profile.name || '태현'}</h2>
-                <p className="text-sm text-gray-500">
+                <p className="body-14 text-gray-500">
                   Joined{' '}
                   {new Date(profile.joinedDate || Date.now()).toLocaleDateString('en-US', {
                     year: 'numeric',
@@ -75,7 +75,7 @@ export default function ProfileScreen({ profile, onStartCustomization, isCustomi
                 <Button
                   key={item.label}
                   variant="ghost"
-                  className={`h-auto w-full justify-between rounded-none px-5 py-4 text-base font-normal ${
+                  className={`h-auto w-full justify-between rounded-none px-5 py-4 body-15 font-normal ${
                     itemIndex !== section.items.length - 1 ? 'border-b border-gray-100' : ''
                   }`}
                 >
@@ -97,10 +97,10 @@ export default function ProfileScreen({ profile, onStartCustomization, isCustomi
         </div>
 
         <Card className="rounded-2xl border-blue-100 bg-gradient-to-br from-purple-50 to-blue-50">
-          <CardContent className="space-y-3 p-5">
-            <h3 className="font-bold">Current Goal</h3>
-            <p className="text-sm text-gray-700">{profile.goal}</p>
-            <div className="flex items-center gap-4 text-sm">
+          <CardContent className="space-y-3 card-padding">
+            <h3 className="heading-3">Current Goal</h3>
+            <p className="body-14 text-gray-700">{profile.goal}</p>
+            <div className="flex items-center gap-4 body-14">
               <div>
                 <span className="text-gray-500">Deadline:</span>
                 <span className="ml-1 font-semibold">{profile.deadline}</span>

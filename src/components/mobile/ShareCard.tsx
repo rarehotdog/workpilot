@@ -124,14 +124,14 @@ export default function ShareCard({ isOpen, onClose, profile, streak, level, com
                 ref={cardRef}
                 className="relative mb-6 overflow-hidden rounded-3xl border-0 bg-gradient-to-br from-[#7C3AED] to-indigo-600 text-white"
               >
-                <CardContent className="p-6">
+                <CardContent className="card-padding">
                   <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/10" />
                   <div className="absolute -bottom-8 -left-8 h-24 w-24 rounded-full bg-white/5" />
 
                   <p className="caption-12 mb-6 font-medium text-white/60">LIFE TREADMILLS</p>
 
                   <p className="mb-2 text-36 font-extrabold leading-none">{streak}일 연속 🔥</p>
-                  <p className="text-15 font-semibold">{profile.name}</p>
+                  <p className="body-15 font-semibold">{profile.name}</p>
                   <p className="body-13 mt-1 text-white/70">Lv.{level} · {profile.goal}</p>
 
                   {questTitle ? <p className="body-13 mt-3 text-white/60">오늘: {questTitle}</p> : null}

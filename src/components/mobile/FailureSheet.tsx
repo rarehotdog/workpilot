@@ -165,7 +165,7 @@ export default function FailureSheet({ isOpen, onClose, quest, profile, energy, 
                 <>
                   {quest ? (
                     <Card className="mb-4 rounded-14 border-0 bg-red-50">
-                      <CardContent className="p-3">
+                      <CardContent className="card-padding-sm">
                         <p className="body-13 font-medium text-red-600">완료하지 못한 퀘스트</p>
                         <p className="body-15 mt-0.5 font-medium text-gray-900">{quest.title}</p>
                       </CardContent>
@@ -212,26 +212,26 @@ export default function FailureSheet({ isOpen, onClose, quest, profile, energy, 
               {step === 'analysis' && analysis ? (
                 <>
                   <Card className="mb-4 rounded-2xl border-0 bg-amber-50">
-                    <CardContent className="p-4">
+                    <CardContent className="card-padding">
                       <div className="mb-2 flex items-center gap-2">
                         <span className="text-xl">{rootCauseEmoji[analysis.rootCause] || '💭'}</span>
                         <p className="body-15 font-semibold text-gray-900">분석 결과</p>
                       </div>
-                      <p className="text-14 leading-relaxed text-[#6B7280]">{analysis.explanation}</p>
+                      <p className="body-14 text-[#6B7280]">{analysis.explanation}</p>
                     </CardContent>
                   </Card>
 
                   <Card className="mb-4 rounded-2xl border-0 bg-purple-50">
-                    <CardContent className="p-4">
+                    <CardContent className="card-padding">
                       <div className="flex items-start gap-3">
                         <Heart className="mt-0.5 h-5 w-5 flex-shrink-0 text-purple-500" />
-                        <p className="text-14 leading-relaxed text-[#6B7280]">{analysis.encouragement}</p>
+                        <p className="body-14 text-[#6B7280]">{analysis.encouragement}</p>
                       </div>
                     </CardContent>
                   </Card>
 
                   <Card className="mb-6 rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50">
-                    <CardContent className="p-4">
+                    <CardContent className="card-padding">
                       <p className="caption-12 mb-1 font-semibold text-emerald-600">대안 퀘스트</p>
                       <p className="body-15 mb-1 font-bold text-gray-900">{analysis.recoveryQuest.title}</p>
                       <p className="body-13 mb-2 text-[#6B7280]">{analysis.recoveryQuest.description}</p>

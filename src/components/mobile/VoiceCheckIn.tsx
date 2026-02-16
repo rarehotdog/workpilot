@@ -135,7 +135,7 @@ export default function VoiceCheckIn({ isOpen, onClose, onSave, initialText }: V
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 placeholder="예) 오늘은 피곤하지만 15분은 집중할 수 있어요. 저녁에 짧은 퀘스트부터 시작하고 싶어요."
-                className="input-surface h-28 resize-none p-4 leading-relaxed"
+                className="input-surface body-14 h-28 resize-none p-4"
               />
 
               <Button onClick={handleSave} disabled={!text.trim()} className="cta-primary mt-4 w-full bg-[#7C3AED] text-white disabled:opacity-40 hover:bg-[#7C3AED]">

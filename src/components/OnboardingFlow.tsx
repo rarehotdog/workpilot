@@ -95,7 +95,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   return (
     <div className="min-h-screen bg-white">
       {/* Header */}
-      <div className="px-5 pt-12 pb-4">
+      <div className="screen-wrap-tight pt-12 pb-4">
         <div className="flex items-center justify-between mb-6">
           {currentStep > 0 ? (
             <button onClick={handleBack} className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
@@ -127,7 +127,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -30 }}
           transition={{ duration: 0.25 }}
-          className="px-5 py-6"
+          className="screen-wrap-tight py-6"
         >
           <div className="flex items-center gap-3 mb-6">
             <div className="w-12 h-12 bg-purple-100 rounded-2xl flex items-center justify-center">
@@ -146,7 +146,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               value={answers[currentQuestion.id]}
               onChange={(e) => setAnswers({ ...answers, [currentQuestion.id]: e.target.value })}
               placeholder={currentQuestion.placeholder}
-              className="w-full p-4 text-15 border-2 border-gray-200 rounded-2xl focus:border-[#7C3AED] focus:outline-none transition-colors"
+              className="input-surface body-15 w-full border-2 border-gray-200 p-4 rounded-2xl focus:border-[#7C3AED] focus:outline-none transition-colors"
               autoFocus
             />
           )}
@@ -159,7 +159,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 onChange={(e) => setAnswers({ ...answers, goal: e.target.value })}
                 placeholder={currentQuestion.placeholder}
                 rows={3}
-                className="w-full p-4 text-15 border-2 border-gray-200 rounded-2xl focus:border-[#7C3AED] focus:outline-none transition-colors resize-none"
+                className="input-surface body-15 w-full border-2 border-gray-200 p-4 rounded-2xl focus:border-[#7C3AED] focus:outline-none transition-colors resize-none"
               />
             </div>
           )}
@@ -171,7 +171,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               onChange={(e) => setAnswers({ ...answers, [currentQuestion.id]: e.target.value })}
               placeholder={currentQuestion.placeholder}
               rows={4}
-              className="w-full p-4 text-15 border-2 border-gray-200 rounded-2xl focus:border-[#7C3AED] focus:outline-none transition-colors resize-none"
+              className="input-surface body-15 w-full border-2 border-gray-200 p-4 rounded-2xl focus:border-[#7C3AED] focus:outline-none transition-colors resize-none"
             />
           )}
 
@@ -181,7 +181,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               type="date"
               value={answers[currentQuestion.id]}
               onChange={(e) => setAnswers({ ...answers, [currentQuestion.id]: e.target.value })}
-              className="w-full p-4 text-15 border-2 border-gray-200 rounded-2xl focus:border-[#7C3AED] focus:outline-none transition-colors"
+              className="input-surface body-15 w-full border-2 border-gray-200 p-4 rounded-2xl focus:border-[#7C3AED] focus:outline-none transition-colors"
               min={new Date().toISOString().split('T')[0]}
             />
           )}
@@ -199,8 +199,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                       : 'border-gray-200 hover:border-purple-300'
                   }`}
                 >
-                  <div className="text-lg font-medium text-gray-900">{choice.label}</div>
-                  <div className="text-13 text-[#9CA3AF]">{choice.description}</div>
+                  <div className="heading-3 text-gray-900">{choice.label}</div>
+                  <div className="body-13 text-[#9CA3AF]">{choice.description}</div>
                 </button>
               ))}
             </div>
@@ -209,11 +209,11 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       </AnimatePresence>
 
       {/* Footer */}
-      <div className="fixed bottom-0 left-0 right-0 max-w-[430px] mx-auto p-5 bg-white border-t border-[#F3F4F6]">
+      <div className="fixed bottom-0 left-0 right-0 max-w-[430px] mx-auto screen-wrap-tight bg-white border-t border-[#F3F4F6]">
         <button
           onClick={handleNext}
           disabled={!canProceed}
-          className={`body-15 tracking-snug w-full py-4 rounded-14 font-semibold flex items-center justify-center gap-2 transition-all ${
+          className={`cta-primary body-15 w-full font-semibold flex items-center justify-center gap-2 transition-all ${
             canProceed
               ? 'bg-[#7C3AED] text-white hover:bg-purple-700'
               : 'bg-gray-100 text-gray-400 cursor-not-allowed'
