@@ -1,10 +1,12 @@
 import { motion } from 'motion/react';
-import { Circle, CheckCircle2, Plus, ChevronRight, Sparkles, X, Share2, Layers3, BrainCircuit, PlayCircle, Clock3, RefreshCw, Mic } from 'lucide-react';
-import type { UserProfile, Quest } from '../../App';
+import { CheckCircle2, Circle, Mic, Plus, Share2, X } from 'lucide-react';
+import type { Quest, UserProfile } from '../../types/app';
 import type { UserStats } from '../../lib/gamification';
-import Tready from '../character/Tready';
-import XPBar from '../gamification/XPBar';
-import LifeCalendar from './widgets/LifeCalendar';
+import { Badge, Button, Card, CardContent, Progress } from '../ui';
+import AIInsight from './AIInsight';
+import EisenhowerMatrix from './EisenhowerMatrix';
+import GitHubContributionChart from './widgets/GitHubContributionChart';
+import YearProgressWidget from './widgets/YearProgressWidget';
 
 interface HomeScreenProps {
   profile: UserProfile;
@@ -21,9 +23,26 @@ interface HomeScreenProps {
   onOpenShare?: () => void;
   onOpenEnergy?: () => void;
   onOpenFutureSelf?: () => void;
-  futureSelfPrompt?: string;
   onOpenVoiceCheckIn?: () => void;
+  futureSelfPrompt?: string;
   latestVoiceCheckIn?: string;
+}
+
+function buildContributionData(seed: number): number[][] {
+  const weeks = 24;
+  const data: number[][] = [];
+  let value = Math.max(1, seed);
+
+  for (let week = 0; week < weeks; week += 1) {
+    const row: number[] = [];
+    for (let day = 0; day < 7; day += 1) {
+      value = (value * 1664525 + 1013904223) % 4294967296;
+      row.push(value % 5);
+    }
+    data.push(row);
+  }
+
+  return data;
 }
 
 export default function HomeScreen({
@@ -41,360 +60,182 @@ export default function HomeScreen({
   onOpenShare,
   onOpenEnergy,
   onOpenFutureSelf,
-  futureSelfPrompt,
   onOpenVoiceCheckIn,
+  futureSelfPrompt,
   latestVoiceCheckIn,
 }: HomeScreenProps) {
+  void futureSelfPrompt;
+  void latestVoiceCheckIn;
+
   const today = new Date();
-  const dayOfWeek = ['일', '월', '화', '수', '목', '금', '토'][today.getDay()];
-  const completedCount = quests.filter(q => q.completed).length;
-  const nextQuest = quests.find(q => !q.completed) || quests[0];
-  const fallbackQuest = nextQuest?.alternative || '대체 퀘스트 자동 생성';
-  const recentFailurePattern = getRecentFailurePattern();
+  const nextQuest = quests.find((quest) => !quest.completed);
+  const completedToday = quests.filter((quest) => quest.completed).length;
+  const dayLabel = today.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' });
 
-  // Year progress
-  const startOfYear = new Date(today.getFullYear(), 0, 1);
-  const dayOfYear = Math.ceil((today.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24));
-  const totalDays = today.getFullYear() % 4 === 0 ? 366 : 365;
-  const yearProgress = ((dayOfYear / totalDays) * 100).toFixed(1);
-
-  // D-Day
   const getDDay = () => {
-    if (!profile.deadline || profile.deadline === '무제한') return '-';
+    if (!profile.deadline || profile.deadline === '무제한') return '∞';
+
     const deadline = new Date(profile.deadline);
     const diff = Math.ceil((deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    return diff > 0 ? `D-${diff}` : diff === 0 ? 'D-Day' : `D+${Math.abs(diff)}`;
+
+    if (diff > 0) return `D-${diff}`;
+    if (diff === 0) return 'D-Day';
+    return `D+${Math.abs(diff)}`;
   };
 
+  const timeOfDay: 'morning' | 'afternoon' | 'evening' =
+    today.getHours() < 12 ? 'morning' : today.getHours() < 18 ? 'afternoon' : 'evening';
+
   return (
-    <div className="screen-wrap bg-[#F9FAFB] min-h-screen">
-
-      {/* ── Header ── */}
-      <div className="flex items-start justify-between mb-4">
-        <div>
-          <h1 className="text-28 font-bold text-gray-900 tracking-tight-custom leading-tight">Daily</h1>
-          <p className="text-14 text-[#9CA3AF] mt-0.5">
-            {today.getMonth() + 1}월 {today.getDate()}일 ({dayOfWeek})
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {onOpenVoiceCheckIn && (
-            <button onClick={onOpenVoiceCheckIn} className="w-11 h-11 tap-44 bg-white rounded-xl border border-[#E5E7EB] flex items-center justify-center">
-              <Mic className="w-[16px] h-[16px] text-gray-600" />
-            </button>
-          )}
-          {onOpenShare && (
-            <button onClick={onOpenShare} className="w-11 h-11 tap-44 bg-white rounded-xl border border-[#E5E7EB] flex items-center justify-center">
-              <Share2 className="w-[16px] h-[16px] text-gray-600" />
-            </button>
-          )}
-          <button
-            onClick={onOpenFutureSelf}
-            className="w-11 h-11 tap-44 bg-white rounded-xl border border-[#E5E7EB] flex items-center justify-center"
-          >
-            <Plus className="w-[18px] h-[18px] text-gray-600" />
-          </button>
-        </div>
-      </div>
-
-      {/* ── Tready Character + XP ── */}
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
-        <Tready
-          level={stats.level}
-          isRunning={completedCount > 0 && completedCount < quests.length}
-          isSad={stats.currentStreak === 0 && stats.totalDaysActive > 1}
-          completionRate={completionRate}
-          className="mb-3"
-        />
-        <XPBar xp={stats.xp} level={stats.level} className="mb-4" />
-      </motion.div>
-
-      {/* ── Stats Row ── */}
-      <div className="grid grid-cols-3 gap-2 mb-4">
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }}
-          className="bg-blue-50 rounded-2xl p-14">
-          <p className="text-12 font-semibold text-blue-600 mb-2">Today</p>
-          <p className="text-22 font-bold text-gray-900 leading-none">{completedCount}/{quests.length}</p>
-        </motion.div>
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}
-          className="bg-orange-50 rounded-2xl p-14">
-          <p className="text-12 font-semibold text-orange-600 mb-2">Streak</p>
-          <p className="text-22 font-bold text-gray-900 leading-none">{stats.currentStreak} <span className="text-base">🔥</span></p>
-        </motion.div>
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}
-          onClick={onOpenEnergy}
-          className="bg-purple-50 rounded-2xl p-14 cursor-pointer">
-          <p className="text-12 font-semibold text-purple-600 mb-2">{energy ? 'Energy' : 'D-Day'}</p>
-          <p className="text-22 font-bold text-gray-900 leading-none">
-            {energy ? `${energy}/5 ⚡` : getDDay()}
-          </p>
-        </motion.div>
-      </div>
-
-      {/* ── Year Progress ── */}
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }}
-        className="bg-gradient-to-br from-fuchsia-400 via-pink-500 to-purple-500 rounded-3xl p-5 mb-4 text-white relative overflow-hidden">
-        <div className="absolute -top-8 -right-8 w-36 h-36 bg-white/10 rounded-full" />
-        <div className="flex justify-between items-start mb-3 relative z-10">
-          <div>
-            <p className="text-15 font-semibold text-white/90">Year Progress</p>
-            <p className="text-13 text-white/60 mt-0.5">{today.getFullYear()}</p>
-          </div>
-          <div className="text-right">
-            <p className="text-36 font-extrabold leading-none">{yearProgress}%</p>
-            <p className="text-13 text-white/60 mt-1">{dayOfYear}/{totalDays} days</p>
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-1 relative z-10">
-          {Array.from({ length: 52 }).map((_, i) => (
-            <div key={i} className={`w-1.5 h-1.5 rounded-full ${i < Math.floor(dayOfYear / 7) ? 'bg-white' : 'bg-white/30'}`} />
-          ))}
-        </div>
-        <div className="flex justify-center mt-3 gap-1 relative z-10">
-          <div className="w-6 h-1 bg-white/60 rounded-full" />
-          <div className="w-1 h-1 bg-white/30 rounded-full" />
-          <div className="w-1 h-1 bg-white/30 rounded-full" />
-        </div>
-      </motion.div>
-
-      {/* ── Life Calendar ── */}
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}
-        className="bg-white rounded-2xl p-4 border border-[#F3F4F6] mb-4">
-        <LifeCalendar />
-      </motion.div>
-
-      {/* ── 3-Layer Widgets ── */}
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.22 }} className="mb-4">
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-lg font-bold text-gray-900 tracking-snug">Pathfinder OS</h2>
-          <span className="text-12 text-[#9CA3AF]">Context → Think → Action</span>
-        </div>
-        <div className="space-y-2">
-          <div className="bg-white rounded-2xl p-4 border border-[#E5E7EB]">
-            <div className="flex items-center gap-2 mb-2">
-              <Layers3 className="w-4 h-4 text-blue-600" />
-              <p className="text-13 font-semibold text-gray-900">Layer 1. Context</p>
+    <div className="min-h-screen bg-gray-50 pb-24">
+      <div className="border-b border-gray-100 bg-white">
+        <div className="screen-wrap-tight pb-3">
+          <div className="mb-3 flex items-center justify-between">
+            <div>
+              <h1 className="heading-1 text-gray-900">Daily</h1>
+              <p className="body-14 mt-0.5 text-gray-500">{dayLabel}</p>
             </div>
-            <p className="text-13 text-[#6B7280] leading-relaxed">
-              목표: <span className="font-medium text-gray-900">{profile.goal}</span> · 제약: <span className="font-medium text-gray-900">{profile.constraints}</span> · 에너지: <span className="font-medium text-gray-900">{energy ? `${energy}/5` : '미체크'}</span>
-            </p>
-            {latestVoiceCheckIn && (
-              <p className="text-12 text-[#9CA3AF] mt-2">최근 체크인: {latestVoiceCheckIn}</p>
-            )}
-            {futureSelfPrompt && (
-              <p className="text-12 text-[#9CA3AF] mt-2">Future Self: {futureSelfPrompt}</p>
-            )}
-            {recentFailurePattern && (
-              <p className="text-12 text-[#9CA3AF] mt-2">
-                최근 실패 패턴: {recentFailurePattern}
-              </p>
-            )}
-          </div>
-
-          <div className="bg-white rounded-2xl p-4 border border-[#E5E7EB]">
-            <div className="flex items-center gap-2 mb-2">
-              <BrainCircuit className="w-4 h-4 text-violet-600" />
-              <p className="text-13 font-semibold text-gray-900">Layer 2. Think</p>
-            </div>
-            <p className="text-13 text-[#6B7280] leading-relaxed">
-              {aiMessage || '어제 기록과 누적 맥락을 분석해 오늘 최적 경로를 계산합니다.'}
-            </p>
-          </div>
-
-          <div className="bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl p-4 text-white">
-            <p className="text-13 font-semibold mb-2">Layer 3. Action</p>
-            <p className="text-15 font-semibold leading-snug mb-3">
-              {nextQuest ? nextQuest.title : '오늘의 첫 퀘스트를 생성하세요'}
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => nextQuest && onQuestToggle(nextQuest.id)}
-                className="flex-1 h-12 bg-white/95 text-emerald-700 rounded-xl text-13 font-semibold flex items-center justify-center gap-1.5"
+            <div className="flex items-center gap-2">
+              {onOpenVoiceCheckIn ? (
+                <Button onClick={onOpenVoiceCheckIn} variant="secondary" size="icon" className="h-10 w-10 rounded-full bg-gray-100">
+                  <Mic size={18} className="text-gray-600" />
+                </Button>
+              ) : null}
+              {onOpenShare ? (
+                <Button onClick={onOpenShare} variant="secondary" size="icon" className="h-10 w-10 rounded-full bg-gray-100">
+                  <Share2 size={18} className="text-gray-600" />
+                </Button>
+              ) : null}
+              <Button
+                onClick={onOpenFutureSelf}
+                variant="secondary"
+                size="icon"
+                className="h-10 w-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg"
               >
-                <PlayCircle className="w-4 h-4" /> 시작하기
-              </button>
-              <button className="px-3 h-12 tap-40 bg-white/20 rounded-xl text-12 font-medium flex items-center gap-1">
-                <Clock3 className="w-3.5 h-3.5" /> 나중에
-              </button>
-              {onQuestFail && nextQuest && (
-                <button
-                  onClick={() => onQuestFail(nextQuest.id)}
-                  className="px-3 h-12 tap-40 bg-white/20 rounded-xl text-12 font-medium flex items-center gap-1"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" /> 대체
-                </button>
-              )}
+                <Plus size={20} className="text-white" />
+              </Button>
             </div>
-            <p className="text-12 text-white/80 mt-2">실패 시 자동 복구: {fallbackQuest}</p>
           </div>
-        </div>
-      </motion.div>
 
-      {/* ── Today's Quest ── */}
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.26 }} className="mb-4">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-bold text-gray-900 tracking-snug">Today's Quest</h2>
-          <span className="text-14 text-[#9CA3AF]">{completedCount}/{quests.length} completed</span>
-        </div>
-
-        {isGeneratingQuests ? (
-          <div className="bg-white rounded-14 p-6 border border-[#F3F4F6] flex flex-col items-center">
-            <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin mb-3" />
-            <p className="text-13 text-[#9CA3AF]">AI가 퀘스트를 생성하고 있어요...</p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {quests.map((quest, index) => (
-              <motion.div
-                key={quest.id}
-                initial={{ opacity: 0, x: -16 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.28 + index * 0.04 }}
-                onClick={() => onQuestToggle(quest.id)}
-                className={`bg-white rounded-14 p-4 border cursor-pointer active:scale-[0.98] transition-all ${
-                  quest.completed ? 'border-emerald-200 bg-emerald-50/40' : 'border-[#F3F4F6]'
-                }`}
-              >
-                <div className="flex items-start gap-3">
-                  <div className="mt-px">
-                    {quest.completed ? (
-                      <CheckCircle2 className="w-[22px] h-[22px] text-emerald-500" />
-                    ) : (
-                      <Circle className="w-[22px] h-[22px] text-gray-300" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-15 font-medium leading-snug ${quest.completed ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
-                      {quest.title}
-                    </p>
-                    {quest.description && (
-                      <p className="text-13 text-[#9CA3AF] mt-1 leading-relaxed">{quest.description}</p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <span className="text-12 text-[#9CA3AF] bg-[#F3F4F6] px-2 py-1 rounded-lg">{quest.duration}</span>
-                    {!quest.completed && onQuestFail && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); onQuestFail(quest.id); }}
-                        className="w-6 h-6 rounded-md bg-red-50 flex items-center justify-center hover:bg-red-100 transition-colors"
-                      >
-                        <X className="w-3 h-3 text-red-400" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-
-            <button
-              onClick={isAiEnabled && onRegenerateQuests ? onRegenerateQuests : undefined}
-              className="w-full h-12 text-14 font-medium text-[#7C3AED] flex items-center justify-center gap-1.5 hover:bg-purple-50 rounded-14 transition-colors"
+          <div className="grid grid-cols-3 gap-2">
+            <Card className="border-0 bg-gradient-to-br from-blue-50 to-blue-100">
+              <CardContent className="px-3 py-2">
+                <p className="mb-0.5 text-xs text-blue-600">Today</p>
+                <p className="text-lg font-bold text-blue-900">{completedToday}/{quests.length}</p>
+              </CardContent>
+            </Card>
+            <Card className="border-0 bg-gradient-to-br from-orange-50 to-orange-100">
+              <CardContent className="px-3 py-2">
+                <p className="mb-0.5 text-xs text-orange-600">Streak</p>
+                <p className="text-lg font-bold text-orange-900">{stats.currentStreak} 🔥</p>
+              </CardContent>
+            </Card>
+            <Button
+              onClick={onOpenEnergy}
+              variant="ghost"
+              className="h-auto rounded-xl border-0 bg-gradient-to-br from-purple-50 to-purple-100 px-3 py-2 text-left hover:bg-gradient-to-br"
             >
-              <Plus className="w-4 h-4" />
-              Add Quest
-            </button>
-          </div>
-        )}
-      </motion.div>
-
-      {/* ── Priority Matrix ── */}
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }}
-        className="bg-white rounded-2xl p-4 border border-[#F3F4F6] mb-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-base font-semibold text-gray-900">Priority Matrix</h3>
-          <button className="text-14 text-[#7C3AED] flex items-center gap-0.5 font-medium">
-            View All <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <PriorityCell color="red" label="Do First" content={quests.filter(q => !q.completed && q.timeOfDay === 'morning')[0]?.title} />
-          <PriorityCell color="yellow" label="Schedule" content={quests.filter(q => !q.completed && q.timeOfDay === 'afternoon')[0]?.title} />
-          <PriorityCell color="green" label="Delegate" content={undefined} />
-          <PriorityCell color="gray" label="Eliminate" content={undefined} />
-        </div>
-      </motion.div>
-
-      {/* ── Current Goal ── */}
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.38 }}
-        className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-3xl p-5 mb-4 text-white relative overflow-hidden">
-        <div className="absolute top-4 right-4 w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-          <span className="text-2xl">🎯</span>
-        </div>
-        <p className="text-12 text-white/70 font-medium mb-1">Current Goal</p>
-        <h3 className="text-22 font-bold leading-tight mb-4 pr-14">{profile.goal}</h3>
-        <div className="mb-2">
-          <div className="flex justify-between text-14 mb-1.5">
-            <span className="text-white/80">Progress</span>
-            <span className="font-semibold">{completionRate.toFixed(1)}%</span>
-          </div>
-          <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
-            <motion.div initial={{ width: 0 }} animate={{ width: `${completionRate}%` }} transition={{ duration: 0.6 }}
-              className="h-full bg-white rounded-full" />
+              <span>
+                <p className="mb-0.5 text-xs text-purple-600">{energy ? 'Energy' : 'D-Day'}</p>
+                <p className="text-lg font-bold text-purple-900">{energy ? `${energy}/5` : getDDay()}</p>
+              </span>
+            </Button>
           </div>
         </div>
-        <div className="flex justify-between text-14 mt-3">
-          <span className="text-white/70">Day {profile.currentDay}</span>
-          <span className="text-white/70">{profile.deadline === '무제한' ? '무제한' : getDDay()}</span>
-        </div>
-      </motion.div>
+      </div>
 
-      {/* ── AI Insight ── */}
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.44 }}
-        className="bg-white rounded-2xl p-4 border border-[#E9D5FF]">
-        <div className="flex items-start gap-3">
-          <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-[10px] flex items-center justify-center flex-shrink-0">
-            <Sparkles className="w-4 h-4 text-white" />
+      <div className="screen-wrap-tight space-y-4">
+        <AIInsight currentQuest={nextQuest} completionRate={completionRate} timeOfDay={timeOfDay} />
+
+        <YearProgressWidget currentDay={profile.currentDay} goalId={profile.goal || 'default'} />
+
+        <GitHubContributionChart data={buildContributionData(stats.currentStreak + profile.currentDay)} streak={stats.currentStreak} />
+
+        <Card className="rounded-2xl border-0 bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg">
+          <CardContent className="p-5">
+            <p className="mb-1 text-sm text-white/80">Current Goal</p>
+            <h3 className="heading-3 mb-3">{profile.goal}</h3>
+            <Progress value={completionRate} className="h-2 bg-white/25 [&>div]:bg-white" />
+            <div className="mt-2 flex items-center justify-between text-sm text-white/85">
+              <span>Day {profile.currentDay}</span>
+              <span>{profile.deadline === '무제한' ? '무제한' : getDDay()}</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <EisenhowerMatrix quests={quests} onQuestToggle={onQuestToggle} />
+
+        <div>
+          <div className="mb-3 flex items-center justify-between px-1">
+            <h2 className="heading-2 text-gray-900">Today's Quest</h2>
+            <Button
+              onClick={isAiEnabled && onRegenerateQuests ? onRegenerateQuests : undefined}
+              variant="link"
+              className="h-auto p-0 text-sm font-semibold text-blue-600"
+            >
+              + 새로고침
+            </Button>
           </div>
-          <div className="min-w-0">
-            <p className="text-15 font-semibold text-gray-900 mb-1">AI Insight</p>
-            <p className="text-13 text-[#6B7280] leading-relaxed">
-              {aiMessage || '오늘 첫 퀘스트를 완료하고 스트릭을 시작해보세요! 작은 시작이 큰 변화의 첫걸음이에요.'}
-            </p>
-          </div>
+
+          {isGeneratingQuests ? (
+            <Card className="rounded-2xl border-gray-200 bg-white">
+              <CardContent className="flex flex-col items-center p-6">
+                <div className="mb-3 h-8 w-8 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+                <p className="text-sm text-gray-500">AI가 퀘스트를 생성하고 있어요...</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-2">
+              {quests.map((quest) => (
+                <motion.button
+                  key={quest.id}
+                  onClick={() => onQuestToggle(quest.id)}
+                  whileTap={{ scale: 0.98 }}
+                  className={`w-full rounded-2xl border p-4 text-left transition-all ${
+                    quest.completed ? 'border-gray-200 bg-gray-50' : 'border-gray-200 bg-white shadow-sm'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="pt-0.5">
+                      {quest.completed ? <CheckCircle2 className="h-5 w-5 text-green-500" /> : <Circle className="h-5 w-5 text-gray-300" />}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h4 className={`mb-1 text-sm font-semibold ${quest.completed ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                        {quest.title}
+                      </h4>
+                      {quest.description ? (
+                        <p className={`mb-2 text-xs ${quest.completed ? 'text-gray-300' : 'text-gray-600'}`}>{quest.description}</p>
+                      ) : null}
+                      <Badge className="rounded-full bg-blue-50 text-blue-600">{quest.duration}</Badge>
+                    </div>
+                    {!quest.completed && onQuestFail ? (
+                      <Button
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onQuestFail(quest.id);
+                        }}
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 rounded-lg bg-red-50 p-0 hover:bg-red-50"
+                      >
+                        <X size={14} className="text-red-400" />
+                      </Button>
+                    ) : null}
+                  </div>
+                </motion.button>
+              ))}
+            </div>
+          )}
         </div>
-      </motion.div>
-    </div>
-  );
-}
 
-function getRecentFailurePattern(): string | null {
-  try {
-    const raw = localStorage.getItem('ltr_failureLog');
-    if (!raw) return null;
-    const logs = JSON.parse(raw) as Array<{ rootCause?: string }>;
-    if (!logs.length) return null;
-
-    const counts: Record<string, number> = {};
-    for (const log of logs.slice(0, 20)) {
-      const key = log.rootCause || 'other';
-      counts[key] = (counts[key] || 0) + 1;
-    }
-    const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0];
-    const labels: Record<string, string> = {
-      time: '시간 압박',
-      motivation: '동기 저하',
-      difficulty: '난이도 과부하',
-      environment: '환경 제약',
-      other: '기타',
-    };
-    return labels[top || 'other'] || '기타';
-  } catch {
-    return null;
-  }
-}
-
-function PriorityCell({ color, label, content }: { color: string; label: string; content?: string }) {
-  const styles: Record<string, { bg: string; dot: string; text: string }> = {
-    red:    { bg: 'bg-red-50',    dot: '🔴', text: 'text-red-600' },
-    yellow: { bg: 'bg-yellow-50', dot: '🟡', text: 'text-yellow-600' },
-    green:  { bg: 'bg-green-50',  dot: '🟢', text: 'text-green-600' },
-    gray:   { bg: 'bg-gray-50',   dot: '⚫', text: 'text-gray-500' },
-  };
-  const s = styles[color] || styles.gray;
-  return (
-    <div className={`${s.bg} rounded-xl p-3`}>
-      <p className={`text-12 font-semibold ${s.text} mb-1`}>{s.dot} {label}</p>
-      <p className="text-12 text-[#6B7280]">{content ? `• ${content}` : '• Empty'}</p>
+        {aiMessage ? (
+          <Card className="rounded-xl border border-purple-100 bg-white">
+            <CardContent className="p-3">
+              <p className="body-14 text-gray-700">{aiMessage}</p>
+            </CardContent>
+          </Card>
+        ) : null}
+      </div>
     </div>
   );
 }

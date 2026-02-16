@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Mic, MicOff, Square, X } from 'lucide-react';
+import { Button, Textarea } from '../ui';
 
 type VoiceCheckInData = {
   text: string;
@@ -31,12 +32,10 @@ export default function VoiceCheckIn({ isOpen, onClose, onSave, initialText }: V
   const [isSupported, setIsSupported] = useState(true);
 
   const recognition = useMemo(() => {
-    const SpeechCtor = (window as unknown as {
-      SpeechRecognition?: new () => SpeechRecognitionLike;
-      webkitSpeechRecognition?: new () => SpeechRecognitionLike;
-    }).SpeechRecognition || (window as unknown as {
-      webkitSpeechRecognition?: new () => SpeechRecognitionLike;
-    }).webkitSpeechRecognition;
+    const SpeechCtor =
+      (window as unknown as { SpeechRecognition?: new () => SpeechRecognitionLike; webkitSpeechRecognition?: new () => SpeechRecognitionLike })
+        .SpeechRecognition ||
+      (window as unknown as { webkitSpeechRecognition?: new () => SpeechRecognitionLike }).webkitSpeechRecognition;
 
     if (!SpeechCtor) return null;
 
@@ -81,14 +80,14 @@ export default function VoiceCheckIn({ isOpen, onClose, onSave, initialText }: V
 
   return (
     <AnimatePresence>
-      {isOpen && (
+      {isOpen ? (
         <>
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/40 z-[60]"
+            className="fixed inset-0 z-[60] bg-black/40"
           />
 
           <motion.div
@@ -96,64 +95,56 @@ export default function VoiceCheckIn({ isOpen, onClose, onSave, initialText }: V
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            className="fixed bottom-0 left-0 right-0 max-w-[430px] mx-auto bg-white rounded-t-3xl z-[61] safe-bottom"
+            className="modal-sheet safe-bottom"
           >
-            <div className="flex justify-center pt-3 pb-2">
-              <div className="w-10 h-1 bg-gray-200 rounded-full" />
+            <div className="modal-handle-wrap">
+              <div className="h-1 w-10 rounded-full bg-gray-200" />
             </div>
 
-            <div className="px-5 pb-8">
-              <div className="flex items-center justify-between mb-5">
-                <h2 className="text-22 font-bold text-gray-900">Voice Check-in</h2>
-                <button onClick={onClose} className="w-10 h-10 tap-40 bg-gray-100 rounded-full flex items-center justify-center">
-                  <X className="w-4 h-4 text-gray-500" />
-                </button>
+            <div className="modal-body">
+              <div className="mb-5 flex items-center justify-between">
+                <h2 className="modal-title text-gray-900">Voice Check-in</h2>
+                <Button onClick={onClose} variant="secondary" size="icon" className="h-10 w-10 rounded-full bg-gray-100">
+                  <X className="h-4 w-4 text-gray-500" />
+                </Button>
               </div>
 
-              <p className="text-13 text-[#6B7280] mb-3">오늘 상태를 30초로 기록해보세요</p>
+              <p className="modal-subtle mb-3">오늘 상태를 30초로 기록해보세요</p>
 
-              <div className="flex gap-2 mb-4">
+              <div className="mb-4 flex gap-2">
                 {!isRecording ? (
-                  <button
-                    onClick={startRecording}
-                    className="flex-1 h-12 bg-[#111827] text-white rounded-14 text-14 font-semibold flex items-center justify-center gap-2"
-                  >
-                    <Mic className="w-4 h-4" /> 녹음 시작
-                  </button>
+                  <Button onClick={startRecording} className="flex-1 bg-[#111827] text-white">
+                    <Mic className="mr-2 h-4 w-4" />
+                    녹음 시작
+                  </Button>
                 ) : (
-                  <button
-                    onClick={stopRecording}
-                    className="flex-1 h-12 bg-red-500 text-white rounded-14 text-14 font-semibold flex items-center justify-center gap-2"
-                  >
-                    <Square className="w-4 h-4" /> 녹음 중지
-                  </button>
+                  <Button onClick={stopRecording} className="flex-1 bg-red-500 text-white hover:bg-red-500">
+                    <Square className="mr-2 h-4 w-4" />
+                    녹음 중지
+                  </Button>
                 )}
               </div>
 
-              {!isSupported && (
-                <p className="text-12 text-amber-600 mb-3 flex items-center gap-1">
-                  <MicOff className="w-3.5 h-3.5" /> 이 브라우저는 음성 인식을 지원하지 않아 텍스트 입력으로 대체합니다.
+              {!isSupported ? (
+                <p className="caption-12 mb-3 flex items-center gap-1 text-amber-600">
+                  <MicOff className="h-3.5 w-3.5" /> 이 브라우저는 음성 인식을 지원하지 않아 텍스트 입력으로 대체합니다.
                 </p>
-              )}
+              ) : null}
 
-              <textarea
+              <Textarea
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 placeholder="예) 오늘은 피곤하지만 15분은 집중할 수 있어요. 저녁에 짧은 퀘스트부터 시작하고 싶어요."
-                className="w-full h-28 bg-[#F3F4F6] rounded-2xl p-4 text-14 leading-relaxed resize-none"
+                className="input-surface h-28 resize-none p-4 leading-relaxed"
               />
 
-              <button
-                onClick={handleSave}
-                disabled={!text.trim()}
-                className="w-full mt-4 h-12 bg-[#7C3AED] text-white rounded-14 text-14 font-semibold disabled:opacity-40"
-              >
+              <Button onClick={handleSave} disabled={!text.trim()} className="cta-primary mt-4 w-full bg-[#7C3AED] text-white disabled:opacity-40 hover:bg-[#7C3AED]">
                 체크인 저장
-              </button>
+              </Button>
             </div>
           </motion.div>
         </>
-      )}
+      ) : null}
     </AnimatePresence>
   );
 }

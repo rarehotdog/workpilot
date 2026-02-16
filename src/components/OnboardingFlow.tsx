@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, ArrowRight, Sparkles, Target, Clock, AlertTriangle, User } from 'lucide-react';
-import type { UserProfile } from '../App';
+import type { UserProfile } from '../types/app';
 
 interface OnboardingFlowProps {
   onComplete: (profile: UserProfile) => void;
@@ -104,7 +104,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           ) : (
             <div className="w-10" />
           )}
-          <span className="text-13 text-[#9CA3AF] font-medium">{currentStep + 1} / {questions.length}</span>
+          <span className="body-13 text-[#9CA3AF] font-medium">{currentStep + 1} / {questions.length}</span>
           <div className="w-10" />
         </div>
 
@@ -134,8 +134,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               <currentQuestion.icon className="w-6 h-6 text-[#7C3AED]" />
             </div>
             <div>
-              <h1 className="text-22 font-bold text-gray-900">{currentQuestion.title}</h1>
-              <p className="text-14 text-[#9CA3AF]">{currentQuestion.subtitle}</p>
+              <h1 className="heading-2 text-gray-900">{currentQuestion.title}</h1>
+              <p className="body-14 text-[#9CA3AF]">{currentQuestion.subtitle}</p>
             </div>
           </div>
 
@@ -213,7 +213,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         <button
           onClick={handleNext}
           disabled={!canProceed}
-          className={`w-full py-4 rounded-14 font-semibold text-15 flex items-center justify-center gap-2 transition-all ${
+          className={`body-15 tracking-snug w-full py-4 rounded-14 font-semibold flex items-center justify-center gap-2 transition-all ${
             canProceed
               ? 'bg-[#7C3AED] text-white hover:bg-purple-700'
               : 'bg-gray-100 text-gray-400 cursor-not-allowed'

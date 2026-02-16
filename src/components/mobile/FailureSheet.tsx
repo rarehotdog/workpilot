@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { X, Loader2, Heart, ArrowRight } from 'lucide-react';
-import type { UserProfile, Quest } from '../../App';
+import { AnimatePresence, motion } from 'motion/react';
+import { ArrowRight, Heart, Loader2, X } from 'lucide-react';
+import type { Quest, UserProfile } from '../../types/app';
 import { analyzeFailure, isGeminiConfigured, type FailureAnalysis, type FailureReasonCode } from '../../lib/gemini';
+import { Button, Card, CardContent, Input } from '../ui';
 
 export interface FailureResolutionMeta {
   reasonCode: FailureReasonCode;
@@ -35,12 +36,19 @@ export default function FailureSheet({ isOpen, onClose, quest, profile, energy, 
     { emoji: '🤒', label: '컨디션이 안 좋았어요', code: 'health' as const },
   ];
 
+  const estimateRemainingMinutes = () => {
+    const now = new Date();
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
+    const ms = Math.max(0, end.getTime() - now.getTime());
+    return Math.floor(ms / (1000 * 60));
+  };
+
   const handleAnalyze = async (selectedReasonTextInput: string, selectedReasonCodeInput: FailureReasonCode) => {
     setSelectedReasonText(selectedReasonTextInput);
     setSelectedReasonCode(selectedReasonCodeInput);
 
     if (!quest || !isGeminiConfigured()) {
-      // Provide default fallback
       setAnalysis({
         rootCause: 'other',
         explanation: '괜찮아요, 누구나 어려운 날이 있어요.',
@@ -60,18 +68,21 @@ export default function FailureSheet({ isOpen, onClose, quest, profile, energy, 
 
     setIsAnalyzing(true);
     try {
-      const result = await analyzeFailure(quest, {
-        reasonCode: selectedReasonCodeInput,
-        reasonText: selectedReasonTextInput,
-        energy,
-        remainingMinutes: estimateRemainingMinutes(),
-      }, profile);
+      const result = await analyzeFailure(
+        quest,
+        {
+          reasonCode: selectedReasonCodeInput,
+          reasonText: selectedReasonTextInput,
+          energy,
+          remainingMinutes: estimateRemainingMinutes(),
+        },
+        profile,
+      );
       if (result) {
         setAnalysis(result);
         setStep('analysis');
       }
     } catch {
-      // Fallback
       setAnalysis({
         rootCause: 'other',
         explanation: '분석 중 문제가 발생했지만, 괜찮아요.',
@@ -101,22 +112,14 @@ export default function FailureSheet({ isOpen, onClose, quest, profile, energy, 
   };
 
   const handleAccept = () => {
-    if (analysis?.recoveryQuest) {
-      onAcceptRecovery(analysis.recoveryQuest, {
-        reasonCode: selectedReasonCode,
-        reasonText: selectedReasonText,
-        rootCause: analysis.rootCause,
-      });
-    }
-    handleClose();
-  };
+    if (!analysis?.recoveryQuest) return;
 
-  const estimateRemainingMinutes = () => {
-    const now = new Date();
-    const end = new Date();
-    end.setHours(23, 59, 59, 999);
-    const ms = Math.max(0, end.getTime() - now.getTime());
-    return Math.floor(ms / (1000 * 60));
+    onAcceptRecovery(analysis.recoveryQuest, {
+      reasonCode: selectedReasonCode,
+      reasonText: selectedReasonText,
+      rootCause: analysis.rootCause,
+    });
+    handleClose();
   };
 
   const rootCauseEmoji: Record<string, string> = {
@@ -129,150 +132,135 @@ export default function FailureSheet({ isOpen, onClose, quest, profile, energy, 
 
   return (
     <AnimatePresence>
-      {isOpen && (
+      {isOpen ? (
         <>
-          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={handleClose}
-            className="fixed inset-0 bg-black/40 z-[60]"
+            className="fixed inset-0 z-[60] bg-black/40"
           />
 
-          {/* Sheet */}
           <motion.div
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            className="fixed bottom-0 left-0 right-0 max-w-[430px] mx-auto bg-white rounded-t-3xl z-[61] safe-bottom"
+            className="modal-sheet safe-bottom"
           >
-            {/* Handle */}
-            <div className="flex justify-center pt-3 pb-2">
-              <div className="w-10 h-1 bg-gray-200 rounded-full" />
+            <div className="modal-handle-wrap">
+              <div className="h-1 w-10 rounded-full bg-gray-200" />
             </div>
 
-            <div className="px-5 pb-8 max-h-[80vh] overflow-y-auto">
-              {/* Header */}
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-22 font-bold text-gray-900">
-                  {step === 'reason' ? '무슨 일이 있었나요?' : '괜찮아요 💛'}
-                </h2>
-                <button onClick={handleClose} className="w-10 h-10 tap-40 bg-gray-100 rounded-full flex items-center justify-center">
-                  <X className="w-4 h-4 text-gray-500" />
-                </button>
+            <div className="modal-body">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="modal-title text-gray-900">{step === 'reason' ? '무슨 일이 있었나요?' : '괜찮아요 💛'}</h2>
+                <Button onClick={handleClose} variant="secondary" size="icon" className="h-10 w-10 rounded-full bg-gray-100">
+                  <X className="h-4 w-4 text-gray-500" />
+                </Button>
               </div>
 
-              {step === 'reason' && (
+              {step === 'reason' ? (
                 <>
-                  {/* Failed quest info */}
-                  {quest && (
-                    <div className="bg-red-50 rounded-14 p-3 mb-4">
-                      <p className="text-13 text-red-600 font-medium">완료하지 못한 퀘스트</p>
-                      <p className="text-15 text-gray-900 font-medium mt-0.5">{quest.title}</p>
-                    </div>
-                  )}
+                  {quest ? (
+                    <Card className="mb-4 rounded-14 border-0 bg-red-50">
+                      <CardContent className="p-3">
+                        <p className="body-13 font-medium text-red-600">완료하지 못한 퀘스트</p>
+                        <p className="body-15 mt-0.5 font-medium text-gray-900">{quest.title}</p>
+                      </CardContent>
+                    </Card>
+                  ) : null}
 
-                  {/* Quick reasons */}
-                  <p className="text-14 text-[#9CA3AF] mb-3">이유를 선택하거나 직접 입력해주세요</p>
-                  <div className="space-y-2 mb-4">
-                    {quickReasons.map(r => (
-                      <button
-                        key={r.label}
-                        onClick={() => handleAnalyze(r.label, r.code)}
+                  <p className="modal-subtle mb-3">이유를 선택하거나 직접 입력해주세요</p>
+                  <div className="mb-4 space-y-2">
+                    {quickReasons.map((item) => (
+                      <Button
+                        key={item.label}
+                        onClick={() => handleAnalyze(item.label, item.code)}
                         disabled={isAnalyzing}
-                        className="w-full bg-white border border-[#F3F4F6] rounded-14 p-3.5 text-left flex items-center gap-3 hover:bg-gray-50 transition-colors active:scale-[0.98]"
+                        variant="ghost"
+                        className="h-auto w-full justify-start gap-3 rounded-14 border border-[#F3F4F6] bg-white px-4 py-3 text-left hover:bg-gray-50"
                       >
-                        <span className="text-xl">{r.emoji}</span>
-                        <span className="text-15 text-gray-900">{r.label}</span>
-                      </button>
+                        <span className="text-xl">{item.emoji}</span>
+                        <span className="body-15 text-gray-900">{item.label}</span>
+                      </Button>
                     ))}
                   </div>
 
-                  {/* Custom input */}
                   <div className="flex gap-2">
-                    <input
+                    <Input
                       type="text"
                       value={reason}
-                      onChange={e => setReason(e.target.value)}
+                      onChange={(event) => setReason(event.target.value)}
                       placeholder="직접 입력..."
-                      className="flex-1 bg-[#F3F4F6] rounded-14 px-4 py-3 text-15 placeholder:text-[#9CA3AF]"
+                      className="input-surface h-12 border-0 px-4 py-3 placeholder:text-[#9CA3AF]"
                     />
-                    <button
-                      onClick={() => reason.trim() && handleAnalyze(reason, 'other')}
+                    <Button
+                      onClick={() => {
+                        if (reason.trim()) handleAnalyze(reason, 'other');
+                      }}
                       disabled={!reason.trim() || isAnalyzing}
-                      className="bg-[#7C3AED] rounded-14 px-4 py-3 text-white disabled:opacity-40"
+                      className="cta-secondary min-w-12 bg-[#7C3AED] px-3 text-white"
                     >
-                      {isAnalyzing ? (
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                      ) : (
-                        <ArrowRight className="w-5 h-5" />
-                      )}
-                    </button>
+                      {isAnalyzing ? <Loader2 className="h-5 w-5 animate-spin" /> : <ArrowRight className="h-5 w-5" />}
+                    </Button>
                   </div>
                 </>
-              )}
+              ) : null}
 
-              {step === 'analysis' && analysis && (
+              {step === 'analysis' && analysis ? (
                 <>
-                  {/* Analysis */}
-                  <div className="bg-amber-50 rounded-2xl p-4 mb-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xl">{rootCauseEmoji[analysis.rootCause] || '💭'}</span>
-                      <p className="text-15 font-semibold text-gray-900">분석 결과</p>
-                    </div>
-                    <p className="text-14 text-[#6B7280] leading-relaxed">{analysis.explanation}</p>
-                  </div>
+                  <Card className="mb-4 rounded-2xl border-0 bg-amber-50">
+                    <CardContent className="p-4">
+                      <div className="mb-2 flex items-center gap-2">
+                        <span className="text-xl">{rootCauseEmoji[analysis.rootCause] || '💭'}</span>
+                        <p className="body-15 font-semibold text-gray-900">분석 결과</p>
+                      </div>
+                      <p className="text-14 leading-relaxed text-[#6B7280]">{analysis.explanation}</p>
+                    </CardContent>
+                  </Card>
 
-                  {/* Encouragement */}
-                  <div className="bg-purple-50 rounded-2xl p-4 mb-4">
-                    <div className="flex items-start gap-3">
-                      <Heart className="w-5 h-5 text-purple-500 flex-shrink-0 mt-0.5" />
-                      <p className="text-14 text-[#6B7280] leading-relaxed">{analysis.encouragement}</p>
-                    </div>
-                  </div>
+                  <Card className="mb-4 rounded-2xl border-0 bg-purple-50">
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-3">
+                        <Heart className="mt-0.5 h-5 w-5 flex-shrink-0 text-purple-500" />
+                        <p className="text-14 leading-relaxed text-[#6B7280]">{analysis.encouragement}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
 
-                  {/* Recovery Quest */}
-                  <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl p-4 mb-6 border border-emerald-200">
-                    <p className="text-12 text-emerald-600 font-semibold mb-1">대안 퀘스트</p>
-                    <p className="text-15 font-bold text-gray-900 mb-1">{analysis.recoveryQuest.title}</p>
-                    <p className="text-13 text-[#6B7280] mb-2">{analysis.recoveryQuest.description}</p>
-                    <span className="text-12 text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-lg">
-                      {analysis.recoveryQuest.duration}
-                    </span>
-                  </div>
+                  <Card className="mb-6 rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50">
+                    <CardContent className="p-4">
+                      <p className="caption-12 mb-1 font-semibold text-emerald-600">대안 퀘스트</p>
+                      <p className="body-15 mb-1 font-bold text-gray-900">{analysis.recoveryQuest.title}</p>
+                      <p className="body-13 mb-2 text-[#6B7280]">{analysis.recoveryQuest.description}</p>
+                      <span className="caption-12 rounded-lg bg-emerald-100 px-2 py-0.5 text-emerald-600">{analysis.recoveryQuest.duration}</span>
+                    </CardContent>
+                  </Card>
 
-                  {/* Actions */}
                   <div className="space-y-2">
-                    <button
-                      onClick={handleAccept}
-                      className="w-full h-12 bg-[#7C3AED] text-white rounded-14 text-15 font-semibold"
-                    >
+                    <Button onClick={handleAccept} className="cta-primary w-full bg-[#7C3AED] text-white hover:bg-[#7C3AED]">
                       대안 퀘스트 수락하기
-                    </button>
-                    <button
-                      onClick={handleClose}
-                      className="w-full h-12 bg-gray-100 text-gray-600 rounded-14 text-15 font-medium"
-                    >
+                    </Button>
+                    <Button onClick={handleClose} variant="secondary" className="cta-secondary w-full bg-gray-100 text-gray-600">
                       괜찮아요, 넘어갈게요
-                    </button>
+                    </Button>
                   </div>
                 </>
-              )}
+              ) : null}
 
-              {/* Loading */}
-              {isAnalyzing && (
+              {isAnalyzing ? (
                 <div className="flex flex-col items-center py-8">
-                  <div className="w-10 h-10 border-2 border-[#7C3AED] border-t-transparent rounded-full animate-spin mb-3" />
-                  <p className="text-15 font-medium text-gray-900">AI가 분석하고 있어요...</p>
-                  <p className="text-13 text-[#9CA3AF]">공감하는 회복 방안을 찾는 중</p>
+                  <div className="mb-3 h-10 w-10 animate-spin rounded-full border-2 border-[#7C3AED] border-t-transparent" />
+                  <p className="body-15 font-medium text-gray-900">AI가 분석하고 있어요...</p>
+                  <p className="body-13 text-[#9CA3AF]">공감하는 회복 방안을 찾는 중</p>
                 </div>
-              )}
+              ) : null}
             </div>
           </motion.div>
         </>
-      )}
+      ) : null}
     </AnimatePresence>
   );
 }

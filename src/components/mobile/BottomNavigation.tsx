@@ -1,5 +1,5 @@
-import { Home, Map, BarChart3, User } from 'lucide-react';
-import { motion } from 'motion/react';
+import { Home, Map, TrendingUp, User } from 'lucide-react';
+import { Button } from '../ui';
 
 type Screen = 'home' | 'techTree' | 'progress' | 'profile';
 
@@ -8,45 +8,31 @@ interface BottomNavigationProps {
   onNavigate: (screen: Screen) => void;
 }
 
-const navItems = [
-  { id: 'home' as Screen, icon: Home, label: 'Home' },
-  { id: 'techTree' as Screen, icon: Map, label: 'Journey' },
-  { id: 'progress' as Screen, icon: BarChart3, label: 'Progress' },
-  { id: 'profile' as Screen, icon: User, label: 'Profile' },
-];
-
 export default function BottomNavigation({ currentScreen, onNavigate }: BottomNavigationProps) {
+  const tabs = [
+    { id: 'home' as Screen, label: 'Home', icon: Home },
+    { id: 'techTree' as Screen, label: 'Journey', icon: Map },
+    { id: 'progress' as Screen, label: 'Progress', icon: TrendingUp },
+    { id: 'profile' as Screen, label: 'Profile', icon: User },
+  ];
+
   return (
-    <div className="fixed bottom-0 left-0 right-0 max-w-[430px] mx-auto bg-white border-t border-[#F3F4F6] z-50 safe-bottom">
-      <div className="flex items-center justify-around pt-2 pb-4">
-        {navItems.map((item) => {
-          const isActive = currentScreen === item.id;
+    <div className="fixed bottom-0 left-0 right-0 max-w-[430px] mx-auto bg-white border-t border-gray-200 safe-bottom z-50">
+      <div className="flex items-center justify-around h-20 px-2">
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = currentScreen === tab.id;
+
           return (
-            <button
-              key={item.id}
-              onClick={() => onNavigate(item.id)}
-              className="relative flex flex-col items-center justify-center gap-1 min-h-12 tap-44 px-4 py-2"
+            <Button
+              key={tab.id}
+              onClick={() => onNavigate(tab.id)}
+              variant="ghost"
+              className="h-full flex-1 flex-col items-center justify-center gap-1 rounded-none"
             >
-              {isActive && (
-                <motion.div
-                  layoutId="activeTab"
-                  className="absolute inset-0 bg-purple-50 rounded-2xl"
-                  transition={{ type: 'spring', bounce: 0.2, duration: 0.5 }}
-                />
-              )}
-              <item.icon
-                className={`relative z-10 w-6 h-6 transition-colors ${
-                  isActive ? 'text-[#7C3AED]' : 'text-gray-400'
-                }`}
-              />
-              <span
-                className={`relative z-10 text-11 font-medium transition-colors ${
-                  isActive ? 'text-[#7C3AED]' : 'text-gray-400'
-                }`}
-              >
-                {item.label}
-              </span>
-            </button>
+              <Icon size={24} className={isActive ? 'text-blue-500' : 'text-gray-400'} strokeWidth={isActive ? 2.5 : 2} />
+              <span className={`caption-12 ${isActive ? 'text-blue-500 font-semibold' : 'text-gray-500'}`}>{tab.label}</span>
+            </Button>
           );
         })}
       </div>

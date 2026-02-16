@@ -196,6 +196,53 @@ a:active {
   letter-spacing: var(--tracking-heading-snug);
 }
 
+/* Typography hierarchy */
+.heading-1 {
+  font-size: 28px;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: var(--tracking-heading-tight);
+}
+
+.heading-2 {
+  font-size: 22px;
+  line-height: 1.28;
+  font-weight: 700;
+  letter-spacing: var(--tracking-heading-snug);
+}
+
+.heading-3 {
+  font-size: 18px;
+  line-height: 1.4;
+  font-weight: 700;
+  letter-spacing: var(--tracking-heading-snug);
+}
+
+.body-15 {
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.body-14 {
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.body-13 {
+  font-size: 13px;
+  line-height: 1.42;
+}
+
+.caption-12 {
+  font-size: 12px;
+  line-height: 1.38;
+}
+
+.caption-11 {
+  font-size: 11px;
+  line-height: 1.35;
+}
+
 /* Font sizes matching Figma */
 .text-28 {
   font-size: 28px;
@@ -261,6 +308,20 @@ a:active {
   padding-bottom: var(--screen-pad-bottom);
 }
 
+.screen-wrap-tight {
+  padding-left: 20px;
+  padding-right: 20px;
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+
+.screen-wrap-loose {
+  padding-left: 24px;
+  padding-right: 24px;
+  padding-top: 20px;
+  padding-bottom: 20px;
+}
+
 .tap-40 {
   min-height: 40px;
   min-width: 40px;
@@ -283,6 +344,16 @@ a:active {
   border: 1px solid #f3f4f6;
   background: #ffffff;
   box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04);
+}
+
+.card-padding {
+  padding: 16px;
+  border-radius: 16px;
+}
+
+.card-padding-sm {
+  padding: 12px;
+  border-radius: 12px;
 }
 
 .screen-header {

@@ -1,7 +1,8 @@
 import { useRef } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { X, Download, Share2 } from 'lucide-react';
-import type { UserProfile } from '../../App';
+import { AnimatePresence, motion } from 'motion/react';
+import { Download, Share2, X } from 'lucide-react';
+import type { UserProfile } from '../../types/app';
+import { Button, Card, CardContent } from '../ui';
 
 interface ShareCardProps {
   isOpen: boolean;
@@ -26,7 +27,6 @@ export default function ShareCard({ isOpen, onClose, profile, streak, level, com
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
-      // Draw gradient background
       const grad = ctx.createLinearGradient(0, 0, 540, 540);
       grad.addColorStop(0, '#7C3AED');
       grad.addColorStop(1, '#4F46E5');
@@ -34,7 +34,6 @@ export default function ShareCard({ isOpen, onClose, profile, streak, level, com
       ctx.roundRect(0, 0, 540, 540, 24);
       ctx.fill();
 
-      // Draw text
       ctx.fillStyle = 'rgba(255,255,255,0.7)';
       ctx.font = '600 16px Inter, sans-serif';
       ctx.fillText('LIFE TREADMILLS', 40, 50);
@@ -54,7 +53,6 @@ export default function ShareCard({ isOpen, onClose, profile, streak, level, com
         ctx.fillText(`오늘: ${questTitle}`, 40, 290);
       }
 
-      // Progress bar
       ctx.fillStyle = 'rgba(255,255,255,0.2)';
       ctx.roundRect(40, 440, 460, 12, 6);
       ctx.fill();
@@ -68,13 +66,12 @@ export default function ShareCard({ isOpen, onClose, profile, streak, level, com
       ctx.fillText(`오늘 완료율 ${Math.round(completionRate)}%`, 40, 480);
       ctx.fillText('#LifeTreadmills #NoMoreTreadmill', 40, 510);
 
-      // Download
       const link = document.createElement('a');
       link.download = `ltr-${streak}days.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
-    } catch (e) {
-      console.error('Share card download error:', e);
+    } catch (error) {
+      console.error('Share card download error:', error);
     }
   };
 
@@ -84,7 +81,9 @@ export default function ShareCard({ isOpen, onClose, profile, streak, level, com
     if (navigator.share) {
       try {
         await navigator.share({ text, title: 'Life Treadmills' });
-      } catch { /* cancelled */ }
+      } catch {
+        // user canceled
+      }
     } else {
       await navigator.clipboard.writeText(text);
       alert('클립보드에 복사되었어요!');
@@ -93,84 +92,76 @@ export default function ShareCard({ isOpen, onClose, profile, streak, level, com
 
   return (
     <AnimatePresence>
-      {isOpen && (
+      {isOpen ? (
         <>
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/60 z-[60]"
+            className="fixed inset-0 z-[60] bg-black/60"
           />
           <motion.div
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            className="fixed bottom-0 left-0 right-0 max-w-[430px] mx-auto bg-white rounded-t-3xl z-[61] safe-bottom"
+            className="modal-sheet safe-bottom"
           >
-            <div className="flex justify-center pt-3 pb-2">
-              <div className="w-10 h-1 bg-gray-200 rounded-full" />
+            <div className="modal-handle-wrap">
+              <div className="h-1 w-10 rounded-full bg-gray-200" />
             </div>
 
-            <div className="px-5 pb-8">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-22 font-bold text-gray-900">공유하기</h2>
-                <button onClick={onClose} className="w-10 h-10 tap-40 bg-gray-100 rounded-full flex items-center justify-center">
-                  <X className="w-4 h-4 text-gray-500" />
-                </button>
+            <div className="modal-body">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="modal-title text-gray-900">공유하기</h2>
+                <Button onClick={onClose} variant="secondary" size="icon" className="h-10 w-10 rounded-full bg-gray-100">
+                  <X className="h-4 w-4 text-gray-500" />
+                </Button>
               </div>
 
-              {/* Preview Card */}
-              <div
+              <Card
                 ref={cardRef}
-                className="bg-gradient-to-br from-[#7C3AED] to-indigo-600 rounded-3xl p-6 text-white mb-6 relative overflow-hidden"
+                className="relative mb-6 overflow-hidden rounded-3xl border-0 bg-gradient-to-br from-[#7C3AED] to-indigo-600 text-white"
               >
-                <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full" />
-                <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-white/5 rounded-full" />
+                <CardContent className="p-6">
+                  <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/10" />
+                  <div className="absolute -bottom-8 -left-8 h-24 w-24 rounded-full bg-white/5" />
 
-                <p className="text-12 text-white/60 font-medium mb-6">LIFE TREADMILLS</p>
+                  <p className="caption-12 mb-6 font-medium text-white/60">LIFE TREADMILLS</p>
 
-                <p className="text-36 font-extrabold leading-none mb-2">{streak}일 연속 🔥</p>
-                <p className="text-15 font-semibold">{profile.name}</p>
-                <p className="text-13 text-white/70 mt-1">Lv.{level} · {profile.goal}</p>
+                  <p className="mb-2 text-36 font-extrabold leading-none">{streak}일 연속 🔥</p>
+                  <p className="text-15 font-semibold">{profile.name}</p>
+                  <p className="body-13 mt-1 text-white/70">Lv.{level} · {profile.goal}</p>
 
-                {questTitle && (
-                  <p className="text-13 text-white/60 mt-3">오늘: {questTitle}</p>
-                )}
+                  {questTitle ? <p className="body-13 mt-3 text-white/60">오늘: {questTitle}</p> : null}
 
-                <div className="mt-6">
-                  <div className="h-2 bg-white/20 rounded-full overflow-hidden">
-                    <div className="h-full bg-white rounded-full" style={{ width: `${completionRate}%` }} />
+                  <div className="mt-6">
+                    <div className="h-2 overflow-hidden rounded-full bg-white/20">
+                      <div className="h-full rounded-full bg-white" style={{ width: `${completionRate}%` }} />
+                    </div>
+                    <div className="caption-11 mt-2 flex justify-between text-white/50">
+                      <span>오늘 완료율 {Math.round(completionRate)}%</span>
+                      <span>#LifeTreadmills</span>
+                    </div>
                   </div>
-                  <div className="flex justify-between mt-2 text-11 text-white/50">
-                    <span>오늘 완료율 {Math.round(completionRate)}%</span>
-                    <span>#LifeTreadmills</span>
-                  </div>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
 
-              {/* Actions */}
               <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={handleDownload}
-                  className="flex items-center justify-center gap-2 h-12 bg-gray-100 rounded-14 text-15 font-medium text-gray-900"
-                >
-                  <Download className="w-5 h-5" />
+                <Button onClick={handleDownload} variant="secondary" className="cta-secondary bg-gray-100 text-gray-900">
+                  <Download className="mr-2 h-5 w-5" />
                   이미지 저장
-                </button>
-                <button
-                  onClick={handleShare}
-                  className="flex items-center justify-center gap-2 h-12 bg-[#7C3AED] rounded-14 text-15 font-medium text-white"
-                >
-                  <Share2 className="w-5 h-5" />
+                </Button>
+                <Button onClick={handleShare} className="cta-secondary bg-[#7C3AED] text-white hover:bg-[#7C3AED]">
+                  <Share2 className="mr-2 h-5 w-5" />
                   공유하기
-                </button>
+                </Button>
               </div>
             </div>
           </motion.div>
         </>
-      )}
+      ) : null}
     </AnimatePresence>
   );
 }
