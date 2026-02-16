@@ -69,7 +69,7 @@ export default function FutureSelfVisualizer({
                   <Sparkles className="w-5 h-5 text-fuchsia-500" />
                   <h2 className="text-22 font-bold text-gray-900">Future Self</h2>
                 </div>
-                <button onClick={onClose} className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                <button onClick={onClose} className="w-10 h-10 tap-40 bg-gray-100 rounded-full flex items-center justify-center">
                   <X className="w-4 h-4 text-gray-500" />
                 </button>
               </div>
@@ -97,7 +97,7 @@ export default function FutureSelfVisualizer({
               <button
                 onClick={handleSave}
                 disabled={!prompt.trim()}
-                className="w-full py-4 rounded-14 text-15 font-semibold bg-[#111827] text-white disabled:opacity-40 flex items-center justify-center gap-2"
+                className="w-full h-12 rounded-14 text-15 font-semibold bg-[#111827] text-white disabled:opacity-40 flex items-center justify-center gap-2"
               >
                 <WandSparkles className="w-4 h-4" />
                 비전 저장하기

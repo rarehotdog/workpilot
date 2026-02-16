@@ -181,7 +181,7 @@ export default function TechTreeScreen({ profile, techTree: initialTechTree, onT
           <button
             onClick={handleGenerateTree}
             disabled={isLoading}
-            className="w-9 h-9 bg-white rounded-xl border border-[#E5E7EB] flex items-center justify-center mt-1"
+            className="w-11 h-11 tap-44 bg-white rounded-xl border border-[#E5E7EB] flex items-center justify-center"
           >
             {isLoading ? (
               <Loader2 className="w-[18px] h-[18px] text-[#7C3AED] animate-spin" />
@@ -315,7 +315,7 @@ export default function TechTreeScreen({ profile, techTree: initialTechTree, onT
                 } ${changedNodeIds.has(phase.id) ? 'ring-2 ring-violet-300' : ''}`}>
                   {/* Phase header */}
                   <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex items-center gap-2">
                       <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
                         phase.status === 'completed'
                           ? 'bg-emerald-100'
@@ -372,7 +372,7 @@ export default function TechTreeScreen({ profile, techTree: initialTechTree, onT
                     {phase.children?.map((quest) => (
                       <div
                         key={quest.id}
-                        className={`flex items-center gap-2.5 py-1.5 px-2 rounded-lg ${
+                        className={`flex items-center gap-2 py-2 px-2 rounded-lg ${
                           quest.status === 'locked' ? 'opacity-40' : ''
                         } ${changedNodeIds.has(quest.id) ? 'bg-violet-50' : ''}`}
                       >

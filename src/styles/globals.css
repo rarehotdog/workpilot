@@ -1,14 +1,14 @@
 @import "tailwindcss";
 
 @theme inline {
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-sans: 'Pretendard', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 :root {
-  --screen-pad-x: clamp(16px, 4.6vw, 22px);
+  --screen-pad-x: clamp(16px, 5vw, 24px);
   --screen-pad-top: 16px;
   --screen-pad-bottom: 24px;
-  --tracking-heading-tight: -0.25px;
+  --tracking-heading-tight: -0.2px;
   --tracking-heading-snug: -0.15px;
 }
 
@@ -63,14 +63,14 @@ button:active, a:active {
 }
 
 /* Font sizes matching Figma */
-.text-28 { font-size: 28px; line-height: 1.22; }
-.text-22 { font-size: 22px; line-height: 1.3; }
+.text-28 { font-size: 28px; line-height: 1.2; }
+.text-22 { font-size: 22px; line-height: 1.28; }
 .text-36 { font-size: 36px; line-height: 1.15; letter-spacing: -0.4px; }
-.text-15 { font-size: 15px; line-height: 1.46; }
+.text-15 { font-size: 15px; line-height: 1.45; }
 .text-14 { font-size: 14px; line-height: 1.45; }
 .text-13 { font-size: 13px; line-height: 1.42; }
-.text-12 { font-size: 12px; line-height: 1.4; }
-.text-11 { font-size: 11px; line-height: 1.36; }
+.text-12 { font-size: 12px; line-height: 1.38; }
+.text-11 { font-size: 11px; line-height: 1.35; }
 
 /* Custom padding */
 .p-14 { padding: 14px; }
@@ -85,6 +85,9 @@ button:active, a:active {
   padding-top: var(--screen-pad-top);
   padding-bottom: var(--screen-pad-bottom);
 }
+
+.tap-40 { min-height: 40px; min-width: 40px; }
+.tap-44 { min-height: 44px; min-width: 44px; }
 
 /* Animations */
 @keyframes fadeIn {

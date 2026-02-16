@@ -97,7 +97,7 @@ export default function ProgressScreen({
       </div>
 
       {/* ── Stats Grid ── */}
-      <div className="grid grid-cols-2 gap-2.5 mb-4">
+      <div className="grid grid-cols-2 gap-2 mb-4">
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
           className="bg-white rounded-2xl p-4 border border-[#F3F4F6]">
           <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center mb-2">

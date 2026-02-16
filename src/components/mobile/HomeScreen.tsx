@@ -79,18 +79,18 @@ export default function HomeScreen({
         </div>
         <div className="flex items-center gap-2">
           {onOpenVoiceCheckIn && (
-            <button onClick={onOpenVoiceCheckIn} className="w-9 h-9 bg-white rounded-xl border border-[#E5E7EB] flex items-center justify-center">
+            <button onClick={onOpenVoiceCheckIn} className="w-11 h-11 tap-44 bg-white rounded-xl border border-[#E5E7EB] flex items-center justify-center">
               <Mic className="w-[16px] h-[16px] text-gray-600" />
             </button>
           )}
           {onOpenShare && (
-            <button onClick={onOpenShare} className="w-9 h-9 bg-white rounded-xl border border-[#E5E7EB] flex items-center justify-center">
+            <button onClick={onOpenShare} className="w-11 h-11 tap-44 bg-white rounded-xl border border-[#E5E7EB] flex items-center justify-center">
               <Share2 className="w-[16px] h-[16px] text-gray-600" />
             </button>
           )}
           <button
             onClick={onOpenFutureSelf}
-            className="w-9 h-9 bg-white rounded-xl border border-[#E5E7EB] flex items-center justify-center"
+            className="w-11 h-11 tap-44 bg-white rounded-xl border border-[#E5E7EB] flex items-center justify-center"
           >
             <Plus className="w-[18px] h-[18px] text-gray-600" />
           </button>
@@ -110,21 +110,21 @@ export default function HomeScreen({
       </motion.div>
 
       {/* ── Stats Row ── */}
-      <div className="grid grid-cols-3 gap-2.5 mb-4">
+      <div className="grid grid-cols-3 gap-2 mb-4">
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }}
           className="bg-blue-50 rounded-2xl p-14">
-          <p className="text-12 font-semibold text-blue-600 mb-1">Today</p>
+          <p className="text-12 font-semibold text-blue-600 mb-2">Today</p>
           <p className="text-22 font-bold text-gray-900 leading-none">{completedCount}/{quests.length}</p>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}
           className="bg-orange-50 rounded-2xl p-14">
-          <p className="text-12 font-semibold text-orange-600 mb-1">Streak</p>
+          <p className="text-12 font-semibold text-orange-600 mb-2">Streak</p>
           <p className="text-22 font-bold text-gray-900 leading-none">{stats.currentStreak} <span className="text-base">🔥</span></p>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}
           onClick={onOpenEnergy}
           className="bg-purple-50 rounded-2xl p-14 cursor-pointer">
-          <p className="text-12 font-semibold text-purple-600 mb-1">{energy ? 'Energy' : 'D-Day'}</p>
+          <p className="text-12 font-semibold text-purple-600 mb-2">{energy ? 'Energy' : 'D-Day'}</p>
           <p className="text-22 font-bold text-gray-900 leading-none">
             {energy ? `${energy}/5 ⚡` : getDDay()}
           </p>
@@ -209,17 +209,17 @@ export default function HomeScreen({
             <div className="flex gap-2">
               <button
                 onClick={() => nextQuest && onQuestToggle(nextQuest.id)}
-                className="flex-1 bg-white/95 text-emerald-700 rounded-xl py-2.5 text-13 font-semibold flex items-center justify-center gap-1.5"
+                className="flex-1 h-12 bg-white/95 text-emerald-700 rounded-xl text-13 font-semibold flex items-center justify-center gap-1.5"
               >
                 <PlayCircle className="w-4 h-4" /> 시작하기
               </button>
-              <button className="px-3 bg-white/20 rounded-xl text-12 font-medium flex items-center gap-1">
+              <button className="px-3 h-12 tap-40 bg-white/20 rounded-xl text-12 font-medium flex items-center gap-1">
                 <Clock3 className="w-3.5 h-3.5" /> 나중에
               </button>
               {onQuestFail && nextQuest && (
                 <button
                   onClick={() => onQuestFail(nextQuest.id)}
-                  className="px-3 bg-white/20 rounded-xl text-12 font-medium flex items-center gap-1"
+                  className="px-3 h-12 tap-40 bg-white/20 rounded-xl text-12 font-medium flex items-center gap-1"
                 >
                   <RefreshCw className="w-3.5 h-3.5" /> 대체
                 </button>
@@ -288,7 +288,7 @@ export default function HomeScreen({
 
             <button
               onClick={isAiEnabled && onRegenerateQuests ? onRegenerateQuests : undefined}
-              className="w-full py-3 text-14 font-medium text-[#7C3AED] flex items-center justify-center gap-1.5 hover:bg-purple-50 rounded-14 transition-colors"
+              className="w-full h-12 text-14 font-medium text-[#7C3AED] flex items-center justify-center gap-1.5 hover:bg-purple-50 rounded-14 transition-colors"
             >
               <Plus className="w-4 h-4" />
               Add Quest

@@ -116,7 +116,7 @@ export default function ShareCard({ isOpen, onClose, profile, streak, level, com
             <div className="px-5 pb-8">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-22 font-bold text-gray-900">공유하기</h2>
-                <button onClick={onClose} className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                <button onClick={onClose} className="w-10 h-10 tap-40 bg-gray-100 rounded-full flex items-center justify-center">
                   <X className="w-4 h-4 text-gray-500" />
                 </button>
               </div>
@@ -154,14 +154,14 @@ export default function ShareCard({ isOpen, onClose, profile, streak, level, com
               <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={handleDownload}
-                  className="flex items-center justify-center gap-2 py-4 bg-gray-100 rounded-14 text-15 font-medium text-gray-900"
+                  className="flex items-center justify-center gap-2 h-12 bg-gray-100 rounded-14 text-15 font-medium text-gray-900"
                 >
                   <Download className="w-5 h-5" />
                   이미지 저장
                 </button>
                 <button
                   onClick={handleShare}
-                  className="flex items-center justify-center gap-2 py-4 bg-[#7C3AED] rounded-14 text-15 font-medium text-white"
+                  className="flex items-center justify-center gap-2 h-12 bg-[#7C3AED] rounded-14 text-15 font-medium text-white"
                 >
                   <Share2 className="w-5 h-5" />
                   공유하기

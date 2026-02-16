@@ -62,7 +62,7 @@ export default function EnergyCheckIn({ isOpen, onClose, onSubmit }: EnergyCheck
                   <Zap className="w-5 h-5 text-amber-500" />
                   <h2 className="text-22 font-bold text-gray-900">오늘 컨디션은?</h2>
                 </div>
-                <button onClick={onClose} className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                <button onClick={onClose} className="w-10 h-10 tap-40 bg-gray-100 rounded-full flex items-center justify-center">
                   <X className="w-4 h-4 text-gray-500" />
                 </button>
               </div>
@@ -101,7 +101,7 @@ export default function EnergyCheckIn({ isOpen, onClose, onSubmit }: EnergyCheck
                     <button
                       key={m.emoji}
                       onClick={() => setMood(m.emoji)}
-                      className={`flex-1 py-4 rounded-2xl flex flex-col items-center gap-2 border-2 transition-all ${
+                      className={`flex-1 min-h-12 rounded-2xl flex flex-col items-center justify-center gap-2 border-2 transition-all ${
                         mood === m.emoji
                           ? 'border-[#7C3AED] bg-purple-50'
                           : 'border-[#F3F4F6]'
@@ -118,7 +118,7 @@ export default function EnergyCheckIn({ isOpen, onClose, onSubmit }: EnergyCheck
               <button
                 onClick={handleSubmit}
                 disabled={!mood}
-                className={`w-full py-4 rounded-14 text-15 font-semibold transition-all ${
+                className={`w-full h-12 rounded-14 text-15 font-semibold transition-all ${
                   mood
                     ? 'bg-[#7C3AED] text-white'
                     : 'bg-gray-100 text-gray-400 cursor-not-allowed'

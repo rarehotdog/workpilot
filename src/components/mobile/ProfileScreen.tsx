@@ -200,11 +200,11 @@ export default function ProfileScreen({
             </p>
             <div className="space-y-2">
               <button onClick={handleReset}
-                className="w-full bg-red-500 text-white rounded-14 py-3.5 text-15 font-semibold">
+                className="w-full h-12 bg-red-500 text-white rounded-14 text-15 font-semibold">
                 초기화하기
               </button>
               <button onClick={() => setShowResetConfirm(false)}
-                className="w-full bg-gray-100 text-gray-600 rounded-14 py-3.5 text-15 font-medium">
+                className="w-full h-12 bg-gray-100 text-gray-600 rounded-14 text-15 font-medium">
                 취소
               </button>
             </div>

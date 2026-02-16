@@ -159,7 +159,7 @@ export default function FailureSheet({ isOpen, onClose, quest, profile, energy, 
                 <h2 className="text-22 font-bold text-gray-900">
                   {step === 'reason' ? '무슨 일이 있었나요?' : '괜찮아요 💛'}
                 </h2>
-                <button onClick={handleClose} className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                <button onClick={handleClose} className="w-10 h-10 tap-40 bg-gray-100 rounded-full flex items-center justify-center">
                   <X className="w-4 h-4 text-gray-500" />
                 </button>
               </div>
@@ -247,13 +247,13 @@ export default function FailureSheet({ isOpen, onClose, quest, profile, energy, 
                   <div className="space-y-2">
                     <button
                       onClick={handleAccept}
-                      className="w-full bg-[#7C3AED] text-white rounded-14 py-4 text-15 font-semibold"
+                      className="w-full h-12 bg-[#7C3AED] text-white rounded-14 text-15 font-semibold"
                     >
                       대안 퀘스트 수락하기
                     </button>
                     <button
                       onClick={handleClose}
-                      className="w-full bg-gray-100 text-gray-600 rounded-14 py-4 text-15 font-medium"
+                      className="w-full h-12 bg-gray-100 text-gray-600 rounded-14 text-15 font-medium"
                     >
                       괜찮아요, 넘어갈게요
                     </button>

@@ -105,7 +105,7 @@ export default function VoiceCheckIn({ isOpen, onClose, onSave, initialText }: V
             <div className="px-5 pb-8">
               <div className="flex items-center justify-between mb-5">
                 <h2 className="text-22 font-bold text-gray-900">Voice Check-in</h2>
-                <button onClick={onClose} className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                <button onClick={onClose} className="w-10 h-10 tap-40 bg-gray-100 rounded-full flex items-center justify-center">
                   <X className="w-4 h-4 text-gray-500" />
                 </button>
               </div>
@@ -116,14 +116,14 @@ export default function VoiceCheckIn({ isOpen, onClose, onSave, initialText }: V
                 {!isRecording ? (
                   <button
                     onClick={startRecording}
-                    className="flex-1 bg-[#111827] text-white rounded-14 py-3 text-14 font-semibold flex items-center justify-center gap-2"
+                    className="flex-1 h-12 bg-[#111827] text-white rounded-14 text-14 font-semibold flex items-center justify-center gap-2"
                   >
                     <Mic className="w-4 h-4" /> 녹음 시작
                   </button>
                 ) : (
                   <button
                     onClick={stopRecording}
-                    className="flex-1 bg-red-500 text-white rounded-14 py-3 text-14 font-semibold flex items-center justify-center gap-2"
+                    className="flex-1 h-12 bg-red-500 text-white rounded-14 text-14 font-semibold flex items-center justify-center gap-2"
                   >
                     <Square className="w-4 h-4" /> 녹음 중지
                   </button>
@@ -146,7 +146,7 @@ export default function VoiceCheckIn({ isOpen, onClose, onSave, initialText }: V
               <button
                 onClick={handleSave}
                 disabled={!text.trim()}
-                className="w-full mt-4 bg-[#7C3AED] text-white rounded-14 py-3.5 text-14 font-semibold disabled:opacity-40"
+                className="w-full mt-4 h-12 bg-[#7C3AED] text-white rounded-14 text-14 font-semibold disabled:opacity-40"
               >
                 체크인 저장
               </button>
