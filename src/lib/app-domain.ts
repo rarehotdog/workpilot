@@ -3,6 +3,7 @@ import type {
   FailureLogEntry,
   FailureRootCause,
   Quest,
+  QuestTimeOfDay,
   UserProfile,
 } from '../types/app';
 
@@ -52,6 +53,136 @@ export function createDefaultQuests(): Quest[] {
       description: '오늘 무엇을 이뤘는지 기록해보세요',
     },
   ];
+}
+
+interface DeterministicQuestContext {
+  date?: string;
+  energy?: number;
+  voiceHint?: string;
+}
+
+function stableHash(input: string): number {
+  let hash = 2166136261;
+  for (let index = 0; index < input.length; index += 1) {
+    hash ^= input.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return Math.abs(hash >>> 0);
+}
+
+function pickBySeed<T>(values: T[], seed: number, offset = 0): T {
+  const index = (seed + offset) % values.length;
+  return values[index];
+}
+
+const QUEST_TEMPLATES: Record<
+  string,
+  { title: string; description: string; duration: string; timeOfDay: QuestTimeOfDay }[]
+> = {
+  growth: [
+    {
+      title: '핵심 목표 1문장 정리하기',
+      description: '오늘의 방향을 명확히 정리해 결정 피로를 줄입니다.',
+      duration: '10분',
+      timeOfDay: 'morning',
+    },
+    {
+      title: '집중 블록 1회 실행',
+      description: '가장 중요한 한 가지를 25분 동안 밀어붙입니다.',
+      duration: '25분',
+      timeOfDay: 'afternoon',
+    },
+    {
+      title: '오늘 실행 회고 3줄',
+      description: '완료/실패/개선점을 짧게 기록합니다.',
+      duration: '10분',
+      timeOfDay: 'evening',
+    },
+  ],
+  fitness: [
+    {
+      title: '워밍업 스트레칭',
+      description: '몸 상태를 확인하며 낮은 강도로 시작합니다.',
+      duration: '10분',
+      timeOfDay: 'morning',
+    },
+    {
+      title: '주요 운동 루틴 1세트',
+      description: '무리하지 않고 폼에 집중해 수행합니다.',
+      duration: '25분',
+      timeOfDay: 'afternoon',
+    },
+    {
+      title: '회복 루틴/수분 체크',
+      description: '회복 상태와 수분 섭취를 체크합니다.',
+      duration: '10분',
+      timeOfDay: 'evening',
+    },
+  ],
+  study: [
+    {
+      title: '핵심 개념 1개 요약',
+      description: '오늘 학습할 핵심 개념을 짧게 정리합니다.',
+      duration: '10분',
+      timeOfDay: 'morning',
+    },
+    {
+      title: '문제 풀이 집중 세션',
+      description: '정해진 시간 내 문제 풀이에 집중합니다.',
+      duration: '30분',
+      timeOfDay: 'afternoon',
+    },
+    {
+      title: '오답/학습 로그 기록',
+      description: '내일 이어갈 학습 포인트를 남깁니다.',
+      duration: '10분',
+      timeOfDay: 'evening',
+    },
+  ],
+};
+
+function inferGoalTemplate(profile: UserProfile): keyof typeof QUEST_TEMPLATES {
+  const text = `${profile.goal} ${profile.constraints}`.toLowerCase();
+  if (text.includes('운동') || text.includes('건강') || text.includes('체력')) return 'fitness';
+  if (text.includes('공부') || text.includes('시험') || text.includes('학습') || text.includes('코딩')) return 'study';
+  return 'growth';
+}
+
+export function createDeterministicFallbackQuests(
+  profile: UserProfile,
+  context?: DeterministicQuestContext,
+): Quest[] {
+  const templateKey = inferGoalTemplate(profile);
+  const templates = QUEST_TEMPLATES[templateKey];
+  const date = context?.date ?? getTodayString();
+  const seed = stableHash(`${profile.name}:${profile.goal}:${date}`);
+  const lowEnergy = typeof context?.energy === 'number' && context.energy <= 2;
+  const voiceLowSignal = context?.voiceHint
+    ? ['피곤', '지침', '무기력', '힘들'].some((signal) =>
+        context.voiceHint?.toLowerCase().includes(signal),
+      )
+    : false;
+
+  const quests = templates.map((_, index) => {
+    const picked = pickBySeed(templates, seed, index);
+    const shouldLighten = index === 0 && (lowEnergy || voiceLowSignal);
+    const duration = shouldLighten ? '5분' : picked.duration;
+    const description = shouldLighten
+      ? `${picked.description} 저에너지 모드로 축소했습니다.`
+      : picked.description;
+
+    return {
+      id: String(index + 1),
+      title: picked.title,
+      duration,
+      completed: false,
+      timeOfDay: picked.timeOfDay,
+      description,
+      alternative: shouldLighten ? '2분만 착수하기' : '5~10분 축소 버전으로 시작하기',
+    } satisfies Quest;
+  });
+
+  return quests;
 }
 
 export function parseMinutes(duration: string): number | null {

@@ -1,5 +1,19 @@
 import { createClient } from '@supabase/supabase-js';
-import type { Quest, UserProfile } from '../types/app';
+import { isFlagEnabled } from '../config/flags';
+import {
+  STORAGE_KEYS,
+  drainOutbox,
+  enqueueOutbox,
+  getItemString,
+  setItemString,
+} from './app-storage';
+import { trackError, trackEvent } from './telemetry';
+import type {
+  Quest,
+  SyncOperationType,
+  SyncOutboxItem,
+  UserProfile,
+} from '../types/app';
 import type { TechTreeResponse } from './gemini';
 
 // ── Init ──
@@ -9,6 +23,9 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 export const supabase = (SUPABASE_URL && SUPABASE_ANON_KEY)
   ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   : null;
+
+const MAX_RETRY = 3;
+const BASE_RETRY_MS = 250;
 
 export function isSupabaseConfigured(): boolean {
   return !!supabase;
@@ -44,10 +61,8 @@ interface DBQuest {
 }
 
 interface DBTechTree {
-  id: string;
   user_id: string;
   tree_data: TechTreeResponse;
-  updated_at: string;
 }
 
 interface DBQuestHistory {
@@ -57,23 +72,108 @@ interface DBQuestHistory {
   quests_completed: number;
   quests_total: number;
   completion_rate: number;
-  created_at: string;
+}
+
+function getTodayString(): string {
+  return new Date().toISOString().split('T')[0];
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+function stableHash(value: string): string {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `${hash >>> 0}`;
+}
+
+function buildIdempotencyKey(operation: SyncOperationType, userId: string, payload: unknown): string {
+  const serializedPayload = JSON.stringify(payload);
+  const payloadHash = stableHash(`${operation}:${serializedPayload}`);
+  return `${operation}:${userId}:${payloadHash}`;
+}
+
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  context: { operation: SyncOperationType; idempotencyKey: string },
+): Promise<T> {
+  let attempt = 0;
+
+  while (attempt < MAX_RETRY) {
+    try {
+      return await fn();
+    } catch (error) {
+      attempt += 1;
+      if (attempt >= MAX_RETRY) {
+        throw error;
+      }
+
+      trackError(error, {
+        phase: 'retry',
+        operation: context.operation,
+        idempotencyKey: context.idempotencyKey,
+        attempt,
+      });
+
+      const delay = BASE_RETRY_MS * Math.pow(2, attempt - 1);
+      await sleep(delay);
+    }
+  }
+
+  throw new Error('Retry exhausted');
 }
 
 // ── Helper: get or create user ID ──
 function getUserId(): string {
-  let userId = localStorage.getItem('ltr_userId');
-  if (!userId) {
-    userId = crypto.randomUUID();
-    localStorage.setItem('ltr_userId', userId);
-  }
-  return userId;
+  const existing = getItemString(STORAGE_KEYS.userId);
+  if (existing) return existing;
+
+  const generated = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random()}`;
+
+  setItemString(STORAGE_KEYS.userId, generated);
+  return generated;
 }
 
-// ── Profile ──
-export async function saveProfile(profile: UserProfile): Promise<void> {
+function isQuestArray(value: unknown): value is Quest[] {
+  return Array.isArray(value);
+}
+
+function isProfile(value: unknown): value is UserProfile {
+  if (!value || typeof value !== 'object') return false;
+
+  const candidate = value as Partial<UserProfile>;
+  return (
+    typeof candidate.name === 'string' &&
+    typeof candidate.goal === 'string' &&
+    typeof candidate.deadline === 'string' &&
+    typeof candidate.routineTime === 'string'
+  );
+}
+
+function isTechTree(value: unknown): value is TechTreeResponse {
+  if (!value || typeof value !== 'object') return false;
+  const candidate = value as Partial<TechTreeResponse>;
+  return !!candidate.root && typeof candidate.estimatedCompletionDate === 'string';
+}
+
+function isQuestHistoryPayload(
+  value: unknown,
+): value is { completedCount: number; totalCount: number } {
+  if (!value || typeof value !== 'object') return false;
+  const candidate = value as Partial<{ completedCount: number; totalCount: number }>;
+  return typeof candidate.completedCount === 'number' && typeof candidate.totalCount === 'number';
+}
+
+async function writeProfileRaw(userId: string, profile: UserProfile): Promise<void> {
   if (!supabase) return;
-  const userId = getUserId();
 
   const data: Partial<DBProfile> = {
     id: userId,
@@ -90,7 +190,159 @@ export async function saveProfile(profile: UserProfile): Promise<void> {
     updated_at: new Date().toISOString(),
   };
 
-  await supabase.from('profiles').upsert(data, { onConflict: 'id' });
+  const { error } = await supabase.from('profiles').upsert(data, { onConflict: 'id' });
+  if (error) throw error;
+}
+
+async function writeQuestsRaw(userId: string, quests: Quest[]): Promise<void> {
+  if (!supabase) return;
+
+  const todayStr = getTodayString();
+
+  const { error: deleteError } = await supabase
+    .from('quests')
+    .delete()
+    .eq('user_id', userId)
+    .eq('quest_date', todayStr);
+  if (deleteError) throw deleteError;
+
+  const rows = quests.map((quest) => ({
+    id: `${userId}-${quest.id}-${todayStr}`,
+    user_id: userId,
+    title: quest.title,
+    duration: quest.duration,
+    completed: quest.completed,
+    alternative: quest.alternative || null,
+    time_of_day: quest.timeOfDay,
+    description: quest.description || null,
+    quest_date: todayStr,
+  }));
+
+  const { error: upsertError } = await supabase.from('quests').upsert(rows);
+  if (upsertError) throw upsertError;
+}
+
+async function writeTechTreeRaw(userId: string, tree: TechTreeResponse): Promise<void> {
+  if (!supabase) return;
+
+  const { error } = await supabase.from('tech_trees').upsert(
+    {
+      id: userId,
+      user_id: userId,
+      tree_data: tree,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'id' },
+  );
+
+  if (error) throw error;
+}
+
+async function writeQuestHistoryRaw(
+  userId: string,
+  completedCount: number,
+  totalCount: number,
+): Promise<void> {
+  if (!supabase) return;
+
+  const todayStr = getTodayString();
+
+  const { error } = await supabase.from('quest_history').upsert(
+    {
+      id: `${userId}-${todayStr}`,
+      user_id: userId,
+      quest_date: todayStr,
+      quests_completed: completedCount,
+      quests_total: totalCount,
+      completion_rate:
+        totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0,
+    },
+    { onConflict: 'id' },
+  );
+
+  if (error) throw error;
+}
+
+async function replayOutboxItem(item: SyncOutboxItem, userId: string): Promise<boolean> {
+  switch (item.operation) {
+    case 'save_profile':
+      if (!isProfile(item.payload)) return true;
+      await writeProfileRaw(userId, item.payload);
+      return true;
+
+    case 'save_quests':
+      if (!isQuestArray(item.payload)) return true;
+      await writeQuestsRaw(userId, item.payload);
+      return true;
+
+    case 'save_tech_tree':
+      if (!isTechTree(item.payload)) return true;
+      await writeTechTreeRaw(userId, item.payload);
+      return true;
+
+    case 'save_quest_history':
+      if (!isQuestHistoryPayload(item.payload)) return true;
+      await writeQuestHistoryRaw(userId, item.payload.completedCount, item.payload.totalCount);
+      return true;
+
+    default:
+      return true;
+  }
+}
+
+export async function flushSyncOutbox(): Promise<void> {
+  if (!supabase || !isFlagEnabled('reliable_storage_v2')) return;
+
+  const userId = getUserId();
+  const result = await drainOutbox((item) => replayOutboxItem(item, userId));
+
+  if (result.processed > 0 || result.remaining > 0) {
+    trackEvent('sync.outbox_drain', {
+      processed: result.processed,
+      remaining: result.remaining,
+    });
+  }
+}
+
+async function performReliableWrite<TPayload>(
+  operation: SyncOperationType,
+  payload: TPayload,
+  writer: (userId: string, payload: TPayload) => Promise<void>,
+): Promise<void> {
+  if (!supabase) return;
+
+  const userId = getUserId();
+  const idempotencyKey = buildIdempotencyKey(operation, userId, payload);
+
+  if (isFlagEnabled('reliable_storage_v2')) {
+    await flushSyncOutbox();
+  }
+
+  try {
+    await withRetry(() => writer(userId, payload), {
+      operation,
+      idempotencyKey,
+    });
+  } catch (error) {
+    if (isFlagEnabled('reliable_storage_v2')) {
+      enqueueOutbox(operation, payload, idempotencyKey);
+      trackEvent('sync.outbox_enqueued', {
+        operation,
+      });
+    }
+
+    trackError(error, {
+      operation,
+      idempotencyKey,
+    });
+  }
+}
+
+// ── Profile ──
+export async function saveProfile(profile: UserProfile): Promise<void> {
+  if (!supabase) return;
+
+  await performReliableWrite('save_profile', profile, writeProfileRaw);
 }
 
 export async function loadProfile(): Promise<UserProfile | null> {
@@ -123,36 +375,15 @@ export async function loadProfile(): Promise<UserProfile | null> {
 // ── Quests ──
 export async function saveQuests(quests: Quest[]): Promise<void> {
   if (!supabase) return;
-  const userId = getUserId();
-  const todayStr = new Date().toISOString().split('T')[0];
 
-  // Delete today's quests first
-  await supabase
-    .from('quests')
-    .delete()
-    .eq('user_id', userId)
-    .eq('quest_date', todayStr);
-
-  // Insert new ones
-  const rows = quests.map(q => ({
-    id: `${userId}-${q.id}-${todayStr}`,
-    user_id: userId,
-    title: q.title,
-    duration: q.duration,
-    completed: q.completed,
-    alternative: q.alternative || null,
-    time_of_day: q.timeOfDay,
-    description: q.description || null,
-    quest_date: todayStr,
-  }));
-
-  await supabase.from('quests').upsert(rows);
+  await performReliableWrite('save_quests', quests, writeQuestsRaw);
 }
 
 export async function loadQuests(): Promise<Quest[] | null> {
   if (!supabase) return null;
+
   const userId = getUserId();
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getTodayString();
 
   const { data, error } = await supabase
     .from('quests')
@@ -163,7 +394,7 @@ export async function loadQuests(): Promise<Quest[] | null> {
 
   if (error || !data || data.length === 0) return null;
 
-  return (data as DBQuest[]).map(row => ({
+  return (data as DBQuest[]).map((row) => ({
     id: row.id.split('-').pop() || row.id,
     title: row.title,
     duration: row.duration,
@@ -177,23 +408,18 @@ export async function loadQuests(): Promise<Quest[] | null> {
 // ── Tech Tree ──
 export async function saveTechTree(tree: TechTreeResponse): Promise<void> {
   if (!supabase) return;
-  const userId = getUserId();
 
-  await supabase.from('tech_trees').upsert({
-    id: userId,
-    user_id: userId,
-    tree_data: tree,
-    updated_at: new Date().toISOString(),
-  }, { onConflict: 'id' });
+  await performReliableWrite('save_tech_tree', tree, writeTechTreeRaw);
 }
 
 export async function loadTechTree(): Promise<TechTreeResponse | null> {
   if (!supabase) return null;
+
   const userId = getUserId();
 
   const { data, error } = await supabase
     .from('tech_trees')
-    .select('tree_data')
+    .select('user_id, tree_data')
     .eq('user_id', userId)
     .single();
 
@@ -204,29 +430,30 @@ export async function loadTechTree(): Promise<TechTreeResponse | null> {
 // ── Quest History (for Progress screen) ──
 export async function saveQuestHistory(
   completedCount: number,
-  totalCount: number
+  totalCount: number,
 ): Promise<void> {
   if (!supabase) return;
-  const userId = getUserId();
-  const todayStr = new Date().toISOString().split('T')[0];
 
-  await supabase.from('quest_history').upsert({
-    id: `${userId}-${todayStr}`,
-    user_id: userId,
-    quest_date: todayStr,
-    quests_completed: completedCount,
-    quests_total: totalCount,
-    completion_rate: totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0,
-  }, { onConflict: 'id' });
+  await performReliableWrite(
+    'save_quest_history',
+    {
+      completedCount,
+      totalCount,
+    },
+    async (userId, payload) => {
+      await writeQuestHistoryRaw(userId, payload.completedCount, payload.totalCount);
+    },
+  );
 }
 
-export async function loadQuestHistory(days: number = 30): Promise<{
+export async function loadQuestHistory(days = 30): Promise<{
   date: string;
   completed: number;
   total: number;
   rate: number;
 }[]> {
   if (!supabase) return [];
+
   const userId = getUserId();
 
   const fromDate = new Date();
@@ -241,7 +468,7 @@ export async function loadQuestHistory(days: number = 30): Promise<{
 
   if (error || !data) return [];
 
-  return (data as DBQuestHistory[]).map(row => ({
+  return (data as DBQuestHistory[]).map((row) => ({
     date: row.quest_date,
     completed: row.quests_completed,
     total: row.quests_total,
