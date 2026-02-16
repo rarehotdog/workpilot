@@ -1,3 +1,9 @@
+import {
+  getItemJSON,
+  setItemJSON,
+  STORAGE_KEYS,
+} from './app-storage';
+
 // ── XP & Level System ──
 
 const XP_TABLE = {
@@ -206,27 +212,23 @@ export function createDefaultStats(): UserStats {
 
 // ── Load/Save ──
 export function loadStats(): UserStats {
-  const saved = localStorage.getItem('ltr_stats');
-  if (saved) {
-    try { return { ...createDefaultStats(), ...JSON.parse(saved) }; }
-    catch { /* ignore */ }
-  }
-  return createDefaultStats();
+  const saved = getItemJSON<UserStats>(STORAGE_KEYS.stats);
+  if (!saved) return createDefaultStats();
+
+  return {
+    ...createDefaultStats(),
+    ...saved,
+  };
 }
 
 export function saveStats(stats: UserStats): void {
-  localStorage.setItem('ltr_stats', JSON.stringify(stats));
+  setItemJSON(STORAGE_KEYS.stats, stats);
 }
 
 export function loadEarnedBadges(): string[] {
-  const saved = localStorage.getItem('ltr_badges');
-  if (saved) {
-    try { return JSON.parse(saved); }
-    catch { /* ignore */ }
-  }
-  return [];
+  return getItemJSON<string[]>(STORAGE_KEYS.badges) ?? [];
 }
 
 export function saveEarnedBadges(ids: string[]): void {
-  localStorage.setItem('ltr_badges', JSON.stringify(ids));
+  setItemJSON(STORAGE_KEYS.badges, ids);
 }

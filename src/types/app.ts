@@ -44,3 +44,47 @@ export interface VoiceCheckInEntry {
   text: string;
   createdAt: string;
 }
+
+export type StorageSchemaVersion = 1 | 2;
+
+export type SyncOperationType =
+  | 'save_profile'
+  | 'save_quests'
+  | 'save_tech_tree'
+  | 'save_quest_history';
+
+export interface SyncOutboxItem {
+  id: string;
+  operation: SyncOperationType;
+  idempotencyKey: string;
+  payload: unknown;
+  createdAt: string;
+  updatedAt: string;
+  attempts: number;
+  lastError?: string;
+}
+
+export type AppEventLevel = 'info' | 'warn' | 'error';
+
+export interface AppEvent {
+  name:
+    | 'app.bootstrap'
+    | 'app.error'
+    | 'quest.toggled'
+    | 'quest.completed_all'
+    | 'quest.failed'
+    | 'quest.recovery_accepted'
+    | 'ai.generate_quests'
+    | 'ai.generate_quests_failed'
+    | 'ai.generate_tree'
+    | 'ai.generate_tree_failed'
+    | 'sync.outbox_enqueued'
+    | 'sync.outbox_drain'
+    | 'ui.modal_opened'
+    | 'ui.modal_closed'
+    | string;
+  timestamp: string;
+  level: AppEventLevel;
+  attributes?: Record<string, string | number | boolean | null>;
+  durationMs?: number;
+}

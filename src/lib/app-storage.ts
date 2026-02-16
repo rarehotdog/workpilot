@@ -1,4 +1,14 @@
+import type {
+  StorageSchemaVersion,
+  SyncOperationType,
+  SyncOutboxItem,
+} from '../types/app';
+
 export const STORAGE_KEYS = {
+  schemaVersion: 'ltr_schema_version',
+  rolloutSeed: 'ltr_rollout_seed',
+  syncOutbox: 'ltr_sync_outbox',
+
   profile: 'ltr_profile',
   quests: 'ltr_quests',
   questDate: 'ltr_questDate',
@@ -11,9 +21,15 @@ export const STORAGE_KEYS = {
   failureLog: 'ltr_failureLog',
   questHistory: 'ltr_questHistory',
   userId: 'ltr_userId',
+
+  stats: 'ltr_stats',
+  badges: 'ltr_badges',
+
   yearImageLegacy: 'ltr_year_image',
   yearImage: (goalId: string) => `ltr_year_image_${goalId}`,
 } as const;
+
+const CURRENT_STORAGE_SCHEMA_VERSION: StorageSchemaVersion = 2;
 
 function canUseStorage(): boolean {
   return typeof window !== 'undefined' && !!window.localStorage;
@@ -65,6 +81,125 @@ export function removeItem(key: string): void {
   } catch {
     // Ignore storage remove failures.
   }
+}
+
+function getStorageSchemaVersion(): StorageSchemaVersion | 0 {
+  const raw = getItemString(STORAGE_KEYS.schemaVersion);
+  if (!raw) return 0;
+
+  const parsed = Number.parseInt(raw, 10);
+  if (parsed === 1 || parsed === 2) {
+    return parsed;
+  }
+
+  return 0;
+}
+
+function migrateSchemaV1ToV2(): void {
+  const legacyYearImage = getItemString(STORAGE_KEYS.yearImageLegacy);
+  if (!legacyYearImage) return;
+
+  const defaultGoalScopedKey = STORAGE_KEYS.yearImage('default');
+  const alreadyScoped = getItemString(defaultGoalScopedKey);
+
+  if (!alreadyScoped) {
+    setItemString(defaultGoalScopedKey, legacyYearImage);
+  }
+
+  removeItem(STORAGE_KEYS.yearImageLegacy);
+}
+
+export function migrateStorageIfNeeded(): StorageSchemaVersion {
+  if (!canUseStorage()) return CURRENT_STORAGE_SCHEMA_VERSION;
+
+  const currentVersion = getStorageSchemaVersion();
+  if (currentVersion >= CURRENT_STORAGE_SCHEMA_VERSION) {
+    return CURRENT_STORAGE_SCHEMA_VERSION;
+  }
+
+  if (currentVersion < 2) {
+    migrateSchemaV1ToV2();
+  }
+
+  setItemString(STORAGE_KEYS.schemaVersion, String(CURRENT_STORAGE_SCHEMA_VERSION));
+  return CURRENT_STORAGE_SCHEMA_VERSION;
+}
+
+function readOutbox(): SyncOutboxItem[] {
+  return getItemJSON<SyncOutboxItem[]>(STORAGE_KEYS.syncOutbox) ?? [];
+}
+
+function writeOutbox(items: SyncOutboxItem[]): void {
+  setItemJSON(STORAGE_KEYS.syncOutbox, items);
+}
+
+export function getOutboxSize(): number {
+  return readOutbox().length;
+}
+
+export function enqueueOutbox(
+  operation: SyncOperationType,
+  payload: unknown,
+  idempotencyKey: string,
+): SyncOutboxItem {
+  const now = new Date().toISOString();
+  const item: SyncOutboxItem = {
+    id: `${operation}:${idempotencyKey}:${now}`,
+    operation,
+    idempotencyKey,
+    payload,
+    createdAt: now,
+    updatedAt: now,
+    attempts: 0,
+  };
+
+  const outbox = readOutbox();
+  const deduped = outbox.filter((entry) => entry.idempotencyKey !== idempotencyKey);
+  deduped.push(item);
+
+  writeOutbox(deduped.slice(-300));
+
+  return item;
+}
+
+export async function drainOutbox(
+  executor: (item: SyncOutboxItem) => Promise<boolean>,
+): Promise<{ processed: number; remaining: number }> {
+  const outbox = readOutbox();
+  if (!outbox.length) {
+    return {
+      processed: 0,
+      remaining: 0,
+    };
+  }
+
+  const nextQueue: SyncOutboxItem[] = [];
+  let processed = 0;
+
+  for (const item of outbox) {
+    try {
+      const success = await executor(item);
+      if (success) {
+        processed += 1;
+        continue;
+      }
+    } catch {
+      // Continue to queue retry.
+    }
+
+    nextQueue.push({
+      ...item,
+      attempts: item.attempts + 1,
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  writeOutbox(nextQueue);
+
+  return {
+    processed,
+    remaining: nextQueue.length,
+  };
 }
 
 export function getYearImage(goalId: string): string | null {

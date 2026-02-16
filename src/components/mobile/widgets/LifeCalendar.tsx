@@ -1,18 +1,18 @@
 import { useMemo } from 'react';
 import { Flame } from 'lucide-react';
+import { getItemJSON, STORAGE_KEYS } from '../../../lib/app-storage';
 
 interface LifeCalendarProps {
   className?: string;
 }
 
 export default function LifeCalendar({ className = '' }: LifeCalendarProps) {
-  // Load real data from localStorage
+  // Load real data from storage helper
   const { calendarData, monthLabels, streak, yearProgress } = useMemo(() => {
-    const history: Record<string, { completed: number; total: number }> = {};
-    const saved = localStorage.getItem('ltr_questHistory');
-    if (saved) {
-      try { Object.assign(history, JSON.parse(saved)); } catch { /* ignore */ }
-    }
+    const history =
+      getItemJSON<Record<string, { completed: number; total: number }>>(
+        STORAGE_KEYS.questHistory,
+      ) ?? {};
 
     const now = new Date();
     const year = now.getFullYear();
