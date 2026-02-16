@@ -2,30 +2,27 @@
 
 LTR는 Vite SPA이며 빌드 산출물은 `dist/`입니다.
 
-## 1) 사전 확인
+## 1) 사전 검증
 ```bash
 npm install
 npm run lint
 npm run build
+npx tsc --noEmit
 ```
-
-`npm run build`는 `tsc && vite build`를 실행합니다.
 
 ## 2) 공통 배포 설정
 - Build Command: `npm run build`
 - Output Directory: `dist`
-- Node Version: 18+
-- SPA redirect 필요 (`/* -> /index.html`)
+- Node: 18+
+- SPA Redirect: `/* -> /index.html`
 
 ## 3) Vercel
-1. GitHub 저장소 연결
-2. Framework Preset: `Vite`
-3. Build Command / Output Directory를 위 공통값으로 설정
-4. 배포
+1. 저장소 연결
+2. Framework: `Vite`
+3. Build / Output 설정 적용
+4. 환경 변수 등록 후 배포
 
 ## 4) Netlify
-`netlify.toml` 예시:
-
 ```toml
 [build]
   command = "npm run build"
@@ -42,7 +39,7 @@ npm run build
 ```bash
 npm i -D gh-pages
 ```
-2. `package.json`에 배포 스크립트 추가
+2. `package.json` script 추가
 ```json
 {
   "scripts": {
@@ -50,23 +47,25 @@ npm i -D gh-pages
   }
 }
 ```
-3. 배포
-```bash
-npm run deploy
-```
+3. `npm run deploy`
 
-## 6) 선택 기능 (Optional)
-- PWA(`vite-plugin-pwa`)
-- Analytics(GA/Mixpanel)
-- Error Monitoring(Sentry)
+## 6) 운영 권장 설정
+- 점진 롤아웃: feature flags (`VITE_FLAG_*_ROLLOUT`)
+- 에러 버짓 초과 시 롤백: flags를 즉시 0으로 전환
+- outbox flush 모니터링: sync enqueue/drain 이벤트 확인
 
-선택 기능은 현재 기본 빌드 경로와 분리해 점진적으로 추가하는 것을 권장합니다.
-
-## 7) 런타임 환경 변수
-필요 시 플랫폼 환경변수에 다음 키를 등록합니다.
-
+## 7) 필수 환경 변수
 - `VITE_GEMINI_API_KEY`
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
 
-미설정 시 앱은 로컬 fallback 모드로 동작합니다.
+## 8) 선택 환경 변수
+- `VITE_GEMINI_TIMEOUT_MS`
+- `VITE_FLAG_RELIABLE_STORAGE_V2_ROLLOUT`
+- `VITE_FLAG_AI_GUARDRAILS_V2_ROLLOUT`
+- `VITE_FLAG_TELEMETRY_V1_ROLLOUT`
+
+## 9) 운영 문서
+- [SLO](./SLO.md)
+- [Operations Runbook](./OPERATIONS_RUNBOOK.md)
+- [Incident Playbook](./INCIDENT_PLAYBOOK.md)
