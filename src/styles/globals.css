@@ -66,6 +66,7 @@ button:active, a:active {
 .text-28 { font-size: 28px; line-height: 1.2; }
 .text-22 { font-size: 22px; line-height: 1.28; }
 .text-36 { font-size: 36px; line-height: 1.15; letter-spacing: -0.4px; }
+.text-18 { font-size: 18px; line-height: 1.4; }
 .text-15 { font-size: 15px; line-height: 1.45; }
 .text-14 { font-size: 14px; line-height: 1.45; }
 .text-13 { font-size: 13px; line-height: 1.42; }
@@ -73,10 +74,10 @@ button:active, a:active {
 .text-11 { font-size: 11px; line-height: 1.35; }
 
 /* Custom padding */
-.p-14 { padding: 14px; }
+.p-14 { padding: 16px; }
 
 /* Custom rounded */
-.rounded-14 { border-radius: 14px; }
+.rounded-14 { border-radius: 16px; }
 
 /* Screen rhythm for app / app-web */
 .screen-wrap {

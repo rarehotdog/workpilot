@@ -94,7 +94,7 @@ export default function LevelUpModal({ isOpen, onClose, newLevel, xpGained }: Le
                   animate={{ y: 0, opacity: 1 }}
                   transition={{ delay: 0.5 }}
                   onClick={onClose}
-                  className="mt-6 w-full bg-[#7C3AED] text-white rounded-14 py-4 text-15 font-semibold"
+                  className="mt-6 w-full h-12 bg-[#7C3AED] text-white rounded-14 text-15 font-semibold"
                 >
                   계속하기
                 </motion.button>

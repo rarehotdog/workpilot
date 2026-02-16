@@ -18,14 +18,14 @@ const navItems = [
 export default function BottomNavigation({ currentScreen, onNavigate }: BottomNavigationProps) {
   return (
     <div className="fixed bottom-0 left-0 right-0 max-w-[430px] mx-auto bg-white border-t border-[#F3F4F6] z-50 safe-bottom">
-      <div className="flex items-center justify-around pt-2 pb-5">
+      <div className="flex items-center justify-around pt-2 pb-4">
         {navItems.map((item) => {
           const isActive = currentScreen === item.id;
           return (
             <button
               key={item.id}
               onClick={() => onNavigate(item.id)}
-              className="relative flex flex-col items-center gap-1 px-5 py-1.5"
+              className="relative flex flex-col items-center justify-center gap-1 min-h-12 tap-44 px-4 py-2"
             >
               {isActive && (
                 <motion.div
