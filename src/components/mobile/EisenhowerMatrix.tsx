@@ -52,12 +52,12 @@ export default function EisenhowerMatrix({ quests, onQuestToggle }: EisenhowerMa
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: idx * 0.05 }}
-              className={`bg-gradient-to-br ${quadrant.color} rounded-2xl p-4 border-2 ${quadrant.border} min-h-[170px]`}
+              className={`bg-gradient-to-br ${quadrant.color} rounded-2xl card-padding border-2 ${quadrant.border} min-h-[170px]`}
             >
               <div className="mb-3">
                 <div className="flex items-center gap-2 mb-2">
                   <Icon size={16} className="text-gray-700" />
-                  <h3 className="text-xs font-bold text-gray-900">{quadrant.title}</h3>
+                  <h3 className="caption-12 font-bold text-gray-900">{quadrant.title}</h3>
                 </div>
                 <div className={`caption-11 inline-block px-2 py-0.5 rounded-full ${quadrant.badge} font-bold`}>
                   {completed}/{quadrantQuests.length}

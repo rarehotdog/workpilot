@@ -177,12 +177,7 @@ select:focus {
 
 button,
 a {
-  transition: transform 0.1s ease, opacity 0.1s ease;
-}
-
-button:active,
-a:active {
-  transform: scale(0.98);
+  transition: opacity 0.15s ease;
 }
 
 /* --- Design Token Utilities --- */
@@ -497,4 +492,29 @@ a:active {
   background: rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+}
+
+.app-shell {
+  min-height: 100svh;
+  max-width: 430px;
+  margin-left: auto;
+  margin-right: auto;
+  background: #f9fafb;
+  position: relative;
+}
+
+.top-system-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  max-width: 430px;
+  margin-left: auto;
+  margin-right: auto;
+  height: 44px;
+  border-bottom: 1px solid #f3f4f6;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: saturate(140%) blur(10px);
+  -webkit-backdrop-filter: saturate(140%) blur(10px);
 }

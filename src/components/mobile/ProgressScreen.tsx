@@ -140,12 +140,12 @@ export default function ProgressScreen({ profile, completionRate, completedCount
                 {last7Days.map((day, index) => (
                   <div key={day.date + index} className="flex flex-1 flex-col items-center gap-2">
                     <motion.div
-                      className="relative w-full rounded-t-lg bg-gradient-to-t from-blue-500 to-blue-400"
+                      className="relative w-full rounded-t-lg bg-gradient-to-t from-[#7C3AED] to-[#8B5CF6]"
                       initial={{ height: 0 }}
                       animate={{ height: `${(day.rate / 100) * 120}px` }}
                       transition={{ duration: 0.5, delay: index * 0.1 }}
                     />
-                    <span className={`text-xs ${index === 6 ? 'font-bold text-blue-500' : 'text-gray-500'}`}>{day.date}</span>
+                    <span className={`caption-12 ${index === 6 ? 'font-bold text-[#7C3AED]' : 'text-gray-500'}`}>{day.date}</span>
                   </div>
                 ))}
               </div>
@@ -162,7 +162,7 @@ export default function ProgressScreen({ profile, completionRate, completedCount
               </div>
               <div className="text-center">
                 <p className="caption-12 mb-1 text-gray-500">Avg Rate</p>
-                <p className="text-lg font-bold text-blue-500">{avgCompletionRate.toFixed(0)}%</p>
+                <p className="text-lg font-bold text-[#7C3AED]">{avgCompletionRate.toFixed(0)}%</p>
               </div>
             </div>
           </CardContent>
@@ -178,7 +178,7 @@ export default function ProgressScreen({ profile, completionRate, completedCount
                     <span className="text-sm font-semibold text-gray-700">{month.month}</span>
                     <span className="text-sm font-bold text-gray-900">{month.rate}%</span>
                   </div>
-                  <Progress value={month.rate} className="h-2 bg-gray-100 [&>div]:bg-blue-500" />
+                  <Progress value={month.rate} className="h-2 bg-gray-100 [&>div]:bg-[#7C3AED]" />
                 </motion.div>
               ))}
             </div>

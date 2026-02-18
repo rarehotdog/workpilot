@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react';
+import { useEffect, useState } from 'react';
 import OnboardingFlow from './components/OnboardingFlow';
 import HomeScreen from './components/mobile/HomeScreen';
 import TechTreeScreen from './components/mobile/TechTreeScreen';
@@ -19,6 +20,19 @@ export type { Quest, UserProfile } from './types/app';
 
 export default function App() {
   const app = useAppOrchestrator();
+  const [clockLabel, setClockLabel] = useState(() =>
+    new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
+  );
+
+  useEffect(() => {
+    const timerId = window.setInterval(() => {
+      setClockLabel(new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }));
+    }, 30_000);
+
+    return () => {
+      window.clearInterval(timerId);
+    };
+  }, []);
 
   if (app.isLoading) {
     return (
@@ -29,16 +43,16 @@ export default function App() {
   }
 
   return (
-    <div className="relative min-h-screen bg-[#F9FAFB] max-w-[430px] mx-auto">
+    <div className="app-shell">
       {app.currentScreen !== 'onboarding' ? (
-        <div className="fixed top-0 left-0 right-0 max-w-[430px] mx-auto h-11 bg-white/80 backdrop-blur-md z-50 flex items-center justify-between px-6 text-sm border-b border-[#F3F4F6]">
+        <div className="top-system-bar flex items-center justify-between px-6 body-14">
           <span className="font-semibold text-gray-900">
-            {new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+            {clockLabel}
           </span>
           <div className="flex items-center gap-2">
-            <span className="text-11 font-semibold text-[#7C3AED]">Lv.{app.stats.level}</span>
+            <span className="caption-11 font-semibold text-[#7C3AED]">Lv.{app.stats.level}</span>
             <div className="w-6 h-3 bg-[#7C3AED] rounded-sm flex items-center justify-end pr-0.5">
-              <div className="w-0.5 h-2 bg-purple-900 rounded-full" />
+              <div className="w-0.5 h-2 bg-violet-900 rounded-full" />
             </div>
           </div>
         </div>

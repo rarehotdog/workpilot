@@ -94,12 +94,12 @@ export default function LifeCalendar({ className = '' }: LifeCalendarProps) {
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div>
-          <h3 className="text-15 font-semibold text-gray-900">Life Calendar</h3>
-          <p className="text-12 text-[#9CA3AF]">{new Date().getFullYear()}년</p>
+          <h3 className="heading-3 text-gray-900">Life Calendar</h3>
+          <p className="caption-12 text-[#9CA3AF]">{new Date().getFullYear()}년</p>
         </div>
         <div className="flex items-center gap-2">
           <Flame className="w-4 h-4 text-orange-500" />
-          <span className="text-14 font-bold text-gray-900">{streak}일</span>
+          <span className="body-14 font-bold text-gray-900">{streak}일</span>
         </div>
       </div>
 
@@ -108,7 +108,7 @@ export default function LifeCalendar({ className = '' }: LifeCalendarProps) {
         {monthLabels.map((m, i) => (
           <span
             key={i}
-            className="text-10 text-[#9CA3AF] flex-shrink-0"
+            className="caption-11 text-[#9CA3AF] flex-shrink-0"
             style={{ marginLeft: i === 0 ? `${m.weekIdx * 11}px` : '0', width: `${(monthLabels[i + 1]?.weekIdx || 53) - m.weekIdx}` ? `${((monthLabels[i + 1]?.weekIdx || 53) - m.weekIdx) * 11}px` : 'auto' }}
           >
             {m.label}
@@ -122,7 +122,7 @@ export default function LifeCalendar({ className = '' }: LifeCalendarProps) {
           {/* Day labels */}
           <div className="flex flex-col flex-shrink-0" style={{ gap: '2px' }}>
             {['M', '', 'W', '', 'F', '', ''].map((d, i) => (
-              <span key={i} className="text-10 text-[#9CA3AF] w-3 h-[9px] leading-[9px]">{d}</span>
+              <span key={i} className="caption-11 text-[#9CA3AF] w-3 h-[9px] leading-[9px]">{d}</span>
             ))}
           </div>
 
@@ -143,13 +143,13 @@ export default function LifeCalendar({ className = '' }: LifeCalendarProps) {
       {/* Legend + Progress */}
       <div className="flex items-center justify-between mt-2">
         <div className="flex items-center gap-1">
-          <span className="text-10 text-[#9CA3AF]">Less</span>
+          <span className="caption-11 text-[#9CA3AF]">Less</span>
           {[0, 0.25, 0.5, 0.75, 1].map((v, i) => (
             <div key={i} className={`w-[9px] h-[9px] rounded-[2px] ${getColor(v, false)}`} />
           ))}
-          <span className="text-10 text-[#9CA3AF]">More</span>
+          <span className="caption-11 text-[#9CA3AF]">More</span>
         </div>
-        <span className="text-12 font-semibold text-[#7C3AED]">{yearProgress}%</span>
+        <span className="caption-12 font-semibold text-[#7C3AED]">{yearProgress}%</span>
       </div>
     </div>
   );

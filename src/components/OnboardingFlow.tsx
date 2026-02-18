@@ -209,7 +209,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       </AnimatePresence>
 
       {/* Footer */}
-      <div className="fixed bottom-0 left-0 right-0 max-w-[430px] mx-auto screen-wrap-tight bg-white border-t border-[#F3F4F6]">
+      <div className="fixed bottom-0 left-0 right-0 max-w-[430px] mx-auto screen-wrap-tight safe-bottom bg-white border-t border-[#F3F4F6]">
         <button
           onClick={handleNext}
           disabled={!canProceed}

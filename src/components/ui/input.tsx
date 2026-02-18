@@ -6,7 +6,7 @@ export function Input({ className, type = 'text', ...props }: React.ComponentPro
     <input
       type={type}
       data-slot="input"
-      className={cn('w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-purple-300 disabled:opacity-50', className)}
+      className={cn('input-surface body-14 w-full h-11 rounded-2xl border border-gray-200 px-4 outline-none focus:ring-2 focus:ring-[#7C3AED]/25 focus:border-[#7C3AED] disabled:opacity-50', className)}
       {...props}
     />
   );

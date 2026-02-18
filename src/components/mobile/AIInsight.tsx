@@ -65,7 +65,7 @@ export default function AIInsight({ currentQuest, completionRate, timeOfDay }: A
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`bg-gradient-to-r ${insight.color} rounded-2xl p-4 shadow-lg`}
+      className={`bg-gradient-to-r ${insight.color} rounded-2xl card-padding shadow-lg`}
     >
       <div className="flex items-start gap-3">
         <div className="text-3xl">{insight.emoji}</div>
@@ -74,7 +74,7 @@ export default function AIInsight({ currentQuest, completionRate, timeOfDay }: A
             <Sparkles size={14} className="text-white" />
             <span className="caption-12 text-white font-bold">AI 조언</span>
           </div>
-          <p className="body-14 text-white font-medium leading-relaxed">{insight.text}</p>
+          <p className="body-14 text-white font-medium">{insight.text}</p>
         </div>
       </div>
     </motion.div>

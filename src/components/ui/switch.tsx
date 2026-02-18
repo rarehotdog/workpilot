@@ -34,7 +34,7 @@ export function Switch({
       disabled={disabled}
       className={cn(
         'inline-flex h-5 w-9 items-center rounded-full border border-transparent transition-colors disabled:opacity-50',
-        resolvedChecked ? 'bg-blue-600' : 'bg-gray-300',
+        resolvedChecked ? 'bg-[#7C3AED]' : 'bg-gray-300',
         className,
       )}
       {...props}

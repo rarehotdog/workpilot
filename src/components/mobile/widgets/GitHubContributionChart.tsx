@@ -18,10 +18,10 @@ export default function GitHubContributionChart({ data, streak }: GitHubContribu
   };
 
   return (
-    <div className="bg-white rounded-2xl p-4 shadow-sm">
+    <div className="bg-white rounded-2xl card-padding shadow-sm border border-gray-100">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="font-bold text-gray-900">Activity</h2>
-        <span className="text-xs text-gray-500">{streak} day streak 🔥</span>
+        <h2 className="heading-3 text-gray-900">Activity</h2>
+        <span className="caption-12 text-gray-500">{streak} day streak 🔥</span>
       </div>
 
       <div className="overflow-x-auto -mx-2 px-2">
@@ -29,7 +29,7 @@ export default function GitHubContributionChart({ data, streak }: GitHubContribu
           <div className="flex flex-col gap-1 pr-1">
             <div className="h-3" />
             {days.map((day, index) => (
-              <div key={day + index} className="h-3 flex items-center justify-center text-[10px] text-gray-400">
+              <div key={day + index} className="h-3 flex items-center justify-center caption-11 text-gray-400">
                 {index % 2 === 1 ? day : ''}
               </div>
             ))}
@@ -37,7 +37,7 @@ export default function GitHubContributionChart({ data, streak }: GitHubContribu
 
           {data.map((week, weekIndex) => (
             <div key={weekIndex} className="flex flex-col gap-1">
-              <div className="h-3 text-[10px] text-gray-500">
+              <div className="h-3 caption-11 text-gray-500">
                 {weekIndex % 4 === 0 ? months[Math.floor(weekIndex / 4) % 12] : ''}
               </div>
               {week.map((level, dayIndex) => (
@@ -56,13 +56,13 @@ export default function GitHubContributionChart({ data, streak }: GitHubContribu
       </div>
 
       <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
-        <span className="text-xs text-gray-500">Less</span>
+        <span className="caption-12 text-gray-500">Less</span>
         <div className="flex gap-1">
           {[0, 1, 2, 3, 4].map((level) => (
             <div key={level} className={`w-3 h-3 rounded-sm ${getColor(level)}`} />
           ))}
         </div>
-        <span className="text-xs text-gray-500">More</span>
+        <span className="caption-12 text-gray-500">More</span>
       </div>
     </div>
   );

@@ -56,16 +56,16 @@ export default function YearProgressWidget({ currentDay, goalId }: YearProgressW
         <div className="absolute inset-0 bg-black/60" />
       </div>
 
-      <div className="relative z-10 p-4">
+      <div className="relative z-10 card-padding">
         <div className="flex items-center justify-between mb-3">
           <div>
-            <h2 className="font-bold text-lg text-white">Year Progress</h2>
-            <p className="text-sm text-white/60">{today.getFullYear()}</p>
+            <h2 className="heading-3 text-white">Year Progress</h2>
+            <p className="body-13 text-white/60">{today.getFullYear()}</p>
           </div>
           <div className="flex items-center gap-2">
             <div className="text-right">
               <p className="text-3xl font-bold text-white">{percentage}%</p>
-              <p className="text-xs text-white/60">{dayOfYear}/{totalDays} days</p>
+              <p className="caption-12 text-white/60">{dayOfYear}/{totalDays} days</p>
             </div>
             <button
               onClick={() => fileInputRef.current?.click()}
@@ -101,12 +101,12 @@ export default function YearProgressWidget({ currentDay, goalId }: YearProgressW
 
         <div className="flex items-center justify-between text-xs">
           <div className="bg-white/10 backdrop-blur-sm rounded-lg px-2 py-1">
-            <span className="text-white/70">Achievement: </span>
-            <span className="text-white font-bold">{achievementRate.toFixed(0)}%</span>
+            <span className="caption-12 text-white/70">Achievement: </span>
+            <span className="caption-12 text-white font-bold">{achievementRate.toFixed(0)}%</span>
           </div>
           <div className="bg-white/10 backdrop-blur-sm rounded-lg px-2 py-1">
-            <span className="text-white/70">Brightness: </span>
-            <span className="text-white font-bold">{(brightness * 100).toFixed(0)}%</span>
+            <span className="caption-12 text-white/70">Brightness: </span>
+            <span className="caption-12 text-white font-bold">{(brightness * 100).toFixed(0)}%</span>
           </div>
         </div>
       </div>
