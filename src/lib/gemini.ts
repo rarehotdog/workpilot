@@ -4,16 +4,34 @@ import { trackError, trackEvent, trackTiming } from './telemetry';
 import type { Quest, UserProfile } from '../types/app';
 
 // ── Init ──
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
-const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
+const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY || '';
+const OPENAI_MODEL = import.meta.env.VITE_OPENAI_MODEL || 'gpt-4o-mini';
+const OPENAI_BASE_URL = import.meta.env.VITE_OPENAI_BASE_URL || 'https://api.openai.com/v1';
+const genAI = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
 const model = genAI?.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
-const AI_TIMEOUT_MS = Number(import.meta.env.VITE_GEMINI_TIMEOUT_MS ?? 12000);
+const AI_TIMEOUT_MS = Number(
+  import.meta.env.VITE_AI_TIMEOUT_MS ??
+    import.meta.env.VITE_GEMINI_TIMEOUT_MS ??
+    import.meta.env.VITE_OPENAI_TIMEOUT_MS ??
+    12000,
+);
 const CIRCUIT_BREAKER_THRESHOLD = 3;
 const CIRCUIT_BREAKER_COOLDOWN_MS = 30_000;
 
 let consecutiveFailures = 0;
 let circuitOpenedUntil = 0;
+
+type AIProvider = 'gemini' | 'openai' | 'none';
+
+interface OpenAIChatCompletionResponse {
+  choices?: Array<{
+    message?: {
+      content?: string;
+    };
+  }>;
+}
 
 function getTodayString(): string {
   return new Date().toISOString().split('T')[0];
@@ -40,7 +58,19 @@ function registerSuccess(): void {
 }
 
 export function isGeminiConfigured(): boolean {
-  return !!API_KEY && API_KEY !== 'your_api_key_here';
+  const hasGemini = !!GEMINI_API_KEY && GEMINI_API_KEY !== 'your_api_key_here';
+  const hasOpenAI = !!OPENAI_API_KEY && OPENAI_API_KEY !== 'your_api_key_here';
+  return hasGemini || hasOpenAI;
+}
+
+function getAIProvider(): AIProvider {
+  if (!!GEMINI_API_KEY && GEMINI_API_KEY !== 'your_api_key_here' && model) {
+    return 'gemini';
+  }
+  if (!!OPENAI_API_KEY && OPENAI_API_KEY !== 'your_api_key_here') {
+    return 'openai';
+  }
+  return 'none';
 }
 
 function parseJSON<T>(text: string): T | null {
@@ -55,7 +85,7 @@ function parseJSON<T>(text: string): T | null {
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
   return new Promise((resolve, reject) => {
     const timeoutId = globalThis.setTimeout(() => {
-      reject(new Error(`Gemini timeout after ${timeoutMs}ms`));
+      reject(new Error(`AI timeout after ${timeoutMs}ms`));
     }, timeoutMs);
 
     promise
@@ -70,13 +100,55 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
   });
 }
 
+async function generateWithOpenAI(prompt: string): Promise<string> {
+  const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${OPENAI_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: OPENAI_MODEL,
+      temperature: 0.4,
+      messages: [
+        {
+          role: 'system',
+          content:
+            'You are a concise Korean life-planning assistant that follows prompt format strictly.',
+        },
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `OpenAI API ${response.status}: ${errorText.slice(0, 200)}`,
+    );
+  }
+
+  const parsed = (await response.json()) as OpenAIChatCompletionResponse;
+  const content = parsed.choices?.[0]?.message?.content?.trim();
+  if (!content) {
+    throw new Error('OpenAI response has no content');
+  }
+
+  return content;
+}
+
 async function guardedGenerateContent(prompt: string, eventName: string): Promise<string | null> {
-  if (!model) return null;
+  const provider = getAIProvider();
+  if (provider === 'none') return null;
 
   const guardrailsEnabled = isFlagEnabled('ai_guardrails_v2');
   if (guardrailsEnabled && isCircuitOpen()) {
     trackEvent('ai.circuit_blocked', {
       eventName,
+      provider,
       openedUntil: circuitOpenedUntil,
     });
     return null;
@@ -85,17 +157,29 @@ async function guardedGenerateContent(prompt: string, eventName: string): Promis
   const startedAt = performance.now();
 
   try {
-    const response = guardrailsEnabled
-      ? await withTimeout(model.generateContent(prompt), AI_TIMEOUT_MS)
-      : await model.generateContent(prompt);
+    let rawText: string;
+
+    if (provider === 'gemini') {
+      if (!model) return null;
+
+      const response = guardrailsEnabled
+        ? await withTimeout(model.generateContent(prompt), AI_TIMEOUT_MS)
+        : await model.generateContent(prompt);
+      rawText = response.response.text();
+    } else {
+      rawText = guardrailsEnabled
+        ? await withTimeout(generateWithOpenAI(prompt), AI_TIMEOUT_MS)
+        : await generateWithOpenAI(prompt);
+    }
 
     registerSuccess();
 
     trackTiming('ai.generate.success', performance.now() - startedAt, {
       eventName,
+      provider,
     });
 
-    return response.response.text();
+    return rawText;
   } catch (error) {
     if (guardrailsEnabled) {
       registerFailure();
@@ -103,6 +187,7 @@ async function guardedGenerateContent(prompt: string, eventName: string): Promis
 
     trackError(error, {
       eventName,
+      provider,
       guardrailsEnabled,
     });
 
@@ -209,7 +294,7 @@ export interface QuestGenerationContext {
 }
 
 export async function generateTechTree(profile: UserProfile): Promise<TechTreeResponse | null> {
-  if (!model) return null;
+  if (!isGeminiConfigured()) return null;
 
   const today = getTodayString();
 
@@ -278,7 +363,7 @@ export async function generatePersonalizedQuests(
   techTree?: TechTreeResponse | null,
   context?: QuestGenerationContext,
 ): Promise<Quest[] | null> {
-  if (!model) return null;
+  if (!isGeminiConfigured()) return null;
 
   const treeContext = techTree
     ? `\n현재 테크트리 진행 상황: ${JSON.stringify(techTree.root.children?.map((phase) => ({
@@ -364,7 +449,7 @@ export async function generatePersonalizedQuests(
 
 // ── AI Insight ──
 export async function getAIInsight(profile: UserProfile, completionRate: number): Promise<string | null> {
-  if (!model) return null;
+  if (!isGeminiConfigured()) return null;
 
   const prompt = `개인 성장 코치로서 짧은 인사이트를 제공하세요.
 
@@ -402,7 +487,7 @@ export async function analyzeFailure(
   context: FailureContext,
   profile: UserProfile,
 ): Promise<FailureAnalysis | null> {
-  if (!model) return null;
+  if (!isGeminiConfigured()) return null;
 
   const prompt = `사용자가 퀘스트를 완료하지 못했습니다. 공감하며 분석하고 회복 방안을 제안하세요.
 
