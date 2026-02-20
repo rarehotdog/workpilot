@@ -1,4 +1,9 @@
 import type {
+  DecisionQualitySnapshot,
+  DecisionRecord,
+  ExecutionRecord,
+  GovernanceAuditLog,
+  IntentState,
   StorageSchemaVersion,
   SyncOperationType,
   SyncOutboxItem,
@@ -21,6 +26,13 @@ export const STORAGE_KEYS = {
   failureLog: 'ltr_failureLog',
   questHistory: 'ltr_questHistory',
   userId: 'ltr_userId',
+  intentState: 'ltr_intent_state',
+  decisionLog: 'ltr_decision_log',
+  executionLog: 'ltr_execution_log',
+  governanceAuditLog: 'ltr_governance_audit_log',
+  decisionQualitySnapshots: 'ltr_decision_quality_snapshots',
+  goldenSetCases: 'ltr_golden_set_cases',
+  privacyPrefs: 'ltr_privacy_prefs',
 
   stats: 'ltr_stats',
   badges: 'ltr_badges',
@@ -29,7 +41,7 @@ export const STORAGE_KEYS = {
   yearImage: (goalId: string) => `ltr_year_image_${goalId}`,
 } as const;
 
-const CURRENT_STORAGE_SCHEMA_VERSION: StorageSchemaVersion = 2;
+const CURRENT_STORAGE_SCHEMA_VERSION: StorageSchemaVersion = 3;
 const OUTBOX_MAX_ATTEMPTS = 15;
 
 function canUseStorage(): boolean {
@@ -89,7 +101,7 @@ function getStorageSchemaVersion(): StorageSchemaVersion | 0 {
   if (!raw) return 0;
 
   const parsed = Number.parseInt(raw, 10);
-  if (parsed === 1 || parsed === 2) {
+  if (parsed === 1 || parsed === 2 || parsed === 3) {
     return parsed;
   }
 
@@ -110,6 +122,45 @@ function migrateSchemaV1ToV2(): void {
   removeItem(STORAGE_KEYS.yearImageLegacy);
 }
 
+function migrateSchemaV2ToV3(): void {
+  const existingExecutionLog = getItemJSON<ExecutionRecord[]>(STORAGE_KEYS.executionLog) ?? [];
+  if (existingExecutionLog.length > 0) return;
+
+  const questHistory =
+    getItemJSON<Record<string, { completed: number; total: number }>>(
+      STORAGE_KEYS.questHistory,
+    ) ?? {};
+  const entries = Object.entries(questHistory);
+  if (!entries.length) return;
+
+  const migrated: ExecutionRecord[] = entries
+    .sort((a, b) => (a[0] > b[0] ? -1 : 1))
+    .map(([date, value], index) => {
+      const completed = value.completed ?? 0;
+      const total = value.total ?? 0;
+      const status =
+        total > 0 && completed >= total
+          ? 'applied'
+          : completed === 0
+            ? 'delayed'
+            : 'skipped';
+      const delayMinutes = status === 'delayed' ? 15 : 0;
+      const timestamp = `${date}T09:00:00.000Z`;
+
+      return {
+        id: `migration-v3-${index + 1}`,
+        decisionId: 'migration-v2-history',
+        actionType: 'quest_day_summary',
+        scheduledAt: timestamp,
+        executedAt: timestamp,
+        status,
+        delayMinutes,
+      };
+    });
+
+  setItemJSON(STORAGE_KEYS.executionLog, migrated.slice(0, 365));
+}
+
 export function migrateStorageIfNeeded(): StorageSchemaVersion {
   if (!canUseStorage()) return CURRENT_STORAGE_SCHEMA_VERSION;
 
@@ -120,6 +171,10 @@ export function migrateStorageIfNeeded(): StorageSchemaVersion {
 
   if (currentVersion < 2) {
     migrateSchemaV1ToV2();
+  }
+
+  if (currentVersion < 3) {
+    migrateSchemaV2ToV3();
   }
 
   setItemString(STORAGE_KEYS.schemaVersion, String(CURRENT_STORAGE_SCHEMA_VERSION));
@@ -238,4 +293,41 @@ export function getYearImage(goalId: string): string | null {
   setItemString(scopedKey, legacy);
   removeItem(STORAGE_KEYS.yearImageLegacy);
   return legacy;
+}
+
+export function getOrInitJSON<T>(key: string, fallback: T): T {
+  const existing = getItemJSON<T>(key);
+  if (existing !== null) return existing;
+  setItemJSON(key, fallback);
+  return fallback;
+}
+
+export function appendBoundedArray<T>(key: string, item: T, maxLen: number): T[] {
+  const existing = getItemJSON<T[]>(key) ?? [];
+  const next = [item, ...existing].slice(0, maxLen);
+  setItemJSON(key, next);
+  return next;
+}
+
+export function recordIntentState(state: IntentState): IntentState {
+  setItemJSON(STORAGE_KEYS.intentState, state);
+  return state;
+}
+
+export function recordDecisionLog(record: DecisionRecord): DecisionRecord[] {
+  return appendBoundedArray(STORAGE_KEYS.decisionLog, record, 500);
+}
+
+export function recordExecutionLog(record: ExecutionRecord): ExecutionRecord[] {
+  return appendBoundedArray(STORAGE_KEYS.executionLog, record, 1000);
+}
+
+export function recordAuditLog(log: GovernanceAuditLog): GovernanceAuditLog[] {
+  return appendBoundedArray(STORAGE_KEYS.governanceAuditLog, log, 1000);
+}
+
+export function recordQualitySnapshot(
+  snapshot: DecisionQualitySnapshot,
+): DecisionQualitySnapshot[] {
+  return appendBoundedArray(STORAGE_KEYS.decisionQualitySnapshots, snapshot, 180);
 }

@@ -34,6 +34,7 @@ yarn-error.log*
 # Testing
 coverage/
 artifacts/qa-screenshots/
+artifacts/quality/
 
 # Misc
 .cache/

@@ -27,6 +27,8 @@ import {
   type UserStats,
 } from '../../lib/gamification';
 import {
+  getOrInitJSON,
+  recordQualitySnapshot,
   STORAGE_KEYS,
   getItemJSON,
   getItemString,
@@ -36,30 +38,55 @@ import {
 } from '../../lib/app-storage';
 import {
   advanceTechTree,
+  calculateDecisionQuality,
+  computeExecutionMetrics,
+  computeSafetyMetrics,
   createDefaultProfile,
   createDeterministicFallbackQuests,
   extractVoiceEnergyHint,
   getRecentFailurePatternLabel,
   parseMinutes,
   rerouteTechTreeForRecovery,
+  validateDecisionRecord,
 } from '../../lib/app-domain';
-import { trackError, trackEvent, trackTiming } from '../../lib/telemetry';
+import {
+  trackDecisionQuality,
+  trackError,
+  trackEvent,
+  trackTiming,
+} from '../../lib/telemetry';
 import {
   getTodayString,
   persistCustomizationFlag,
+  persistDecisionRecord,
+  persistExecutionRecord,
+  persistGovernanceAudit,
+  persistIntentState,
   persistProfile,
   persistQuestHistory,
   persistQuests,
   persistTechTree,
 } from '../actions/orchestration';
 import type {
+  DecisionQualitySnapshot,
+  DecisionRecord,
+  ExecutionMetrics,
+  ExecutionRecord,
   FailureLogEntry,
+  GovernanceAuditLog,
+  IntentState,
   Quest,
+  SafetyMetrics,
   Screen,
   UserProfile,
   VoiceCheckInEntry,
 } from '../../types/app';
 import type { FailureResolutionMeta } from '../../components/mobile/FailureSheet';
+import {
+  buildAuditEvent,
+  requiresExplicitApproval,
+} from '../../lib/governance';
+import { isFlagEnabled } from '../../config/flags';
 
 interface LevelUpState {
   level: number;
@@ -87,6 +114,12 @@ interface UseAppOrchestratorResult {
   futureSelfPrompt: string;
   isVoiceCheckInOpen: boolean;
   latestVoiceCheckIn: VoiceCheckInEntry | null;
+  intentState: IntentState | null;
+  decisionQualitySnapshot: DecisionQualitySnapshot | null;
+  decisionQualityHistory: DecisionQualitySnapshot[];
+  executionMetrics: ExecutionMetrics;
+  safetyMetrics: SafetyMetrics;
+  decisionTerminalEnabled: boolean;
   completedCount: number;
   totalCount: number;
   completionRate: number;
@@ -109,6 +142,9 @@ interface UseAppOrchestratorResult {
 }
 
 export function useAppOrchestrator(): UseAppOrchestratorResult {
+  const decisionTerminalEnabled = isFlagEnabled('decision_terminal_v1');
+  const governanceAuditEnabled = isFlagEnabled('governance_audit_v1');
+
   const [currentScreen, setCurrentScreen] = useState<Screen>('home');
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [todayQuests, setTodayQuests] = useState<Quest[]>([]);
@@ -131,6 +167,33 @@ export function useAppOrchestrator(): UseAppOrchestratorResult {
   const [futureSelfPrompt, setFutureSelfPrompt] = useState('');
   const [isVoiceCheckInOpen, setIsVoiceCheckInOpen] = useState(false);
   const [latestVoiceCheckIn, setLatestVoiceCheckIn] = useState<VoiceCheckInEntry | null>(null);
+  const [intentState, setIntentState] = useState<IntentState | null>(null);
+  const [decisionQualitySnapshot, setDecisionQualitySnapshot] =
+    useState<DecisionQualitySnapshot | null>(null);
+  const [decisionQualityHistory, setDecisionQualityHistory] = useState<
+    DecisionQualitySnapshot[]
+  >([]);
+  const [executionMetrics, setExecutionMetrics] = useState<ExecutionMetrics>({
+    windowDays: 7,
+    total: 0,
+    appliedCount: 0,
+    delayedCount: 0,
+    skippedCount: 0,
+    appliedRate: 0,
+    delayedRate: 0,
+    onTimeRate: 0,
+  });
+  const [safetyMetrics, setSafetyMetrics] = useState<SafetyMetrics>({
+    windowDays: 7,
+    totalAudits: 0,
+    riskCounts: {
+      low: 0,
+      medium: 0,
+      high: 0,
+    },
+    highRiskViolations: 0,
+    highRiskViolationRate: 0,
+  });
 
   const completedCount = todayQuests.filter((quest) => quest.completed).length;
   const totalCount = todayQuests.length;
@@ -159,6 +222,205 @@ export function useAppOrchestrator(): UseAppOrchestratorResult {
       }, durationMs);
     },
     [clearAiMessageTimer],
+  );
+
+  const logGovernanceEvent = useCallback(
+    (scope: 'health' | 'decision' | 'task' | 'profile', approved: boolean) => {
+      if (!governanceAuditEnabled) return;
+
+      const needsApproval = requiresExplicitApproval(scope);
+      if (needsApproval) {
+        trackEvent('governance.permission_prompted', {
+          scope,
+        });
+      }
+
+      const eventType = approved
+        ? 'permission_granted'
+        : 'permission_denied';
+      const audit = buildAuditEvent({
+        eventType,
+        scope,
+        approved,
+      });
+      persistGovernanceAudit(audit);
+
+      trackEvent(
+        approved
+          ? 'governance.permission_granted'
+          : 'governance.permission_denied',
+        {
+          scope,
+          riskLevel: audit.riskLevel,
+        },
+      );
+
+      if (!approved && audit.riskLevel === 'high') {
+        trackEvent('governance.risk_flagged', {
+          scope,
+          riskLevel: audit.riskLevel,
+        });
+      }
+    },
+    [governanceAuditEnabled],
+  );
+
+  const buildQuestDecisionRecord = useCallback(
+    (
+      profile: UserProfile,
+      quests: Quest[],
+      source: 'ai' | 'fallback',
+      voiceText?: string,
+    ): DecisionRecord => {
+      const now = new Date().toISOString();
+      const options = quests.slice(0, 3).map((quest, index) => {
+        const minutes = parseMinutes(quest.duration) ?? 20;
+        return {
+          id: `opt-${index + 1}-${quest.id}`,
+          title: quest.title,
+          estimatedCost: minutes,
+          estimatedBenefit: Math.max(40, 90 - index * 10),
+          counterArguments: [
+            '현재 에너지 대비 과도할 수 있음',
+            '예정된 일정과 충돌할 수 있음',
+          ],
+          recommended: index === 0,
+        };
+      });
+
+      while (options.length < 3) {
+        const index = options.length + 1;
+        options.push({
+          id: `opt-${index}-fallback`,
+          title: `보완 옵션 ${index}`,
+          estimatedCost: 15,
+          estimatedBenefit: 60,
+          counterArguments: ['맥락 데이터가 부족할 수 있음', '실행 시간이 제한될 수 있음'],
+          recommended: false,
+        });
+      }
+
+      const evidence: DecisionRecord['evidence'] = [
+        {
+          id: `e-goal-${now}`,
+          title: `핵심 목표: ${profile.goal}`,
+          sourceKind: 'manual' as const,
+          sourceRef: 'profile.goal',
+          capturedAt: now,
+        },
+        {
+          id: `e-constraints-${now}`,
+          title: `제약: ${profile.constraints || '없음'}`,
+          sourceKind: 'manual' as const,
+          sourceRef: 'profile.constraints',
+          capturedAt: now,
+        },
+        {
+          id: `e-source-${now}`,
+          title:
+            source === 'ai'
+              ? 'AI 기반 맥락 추론 결과'
+              : '결정론적 fallback 규칙 기반',
+          sourceKind: 'note' as const,
+          sourceRef: source,
+          capturedAt: now,
+        },
+      ];
+
+      if (voiceText?.trim()) {
+        evidence.push({
+          id: `e-voice-${now}`,
+          title: '최근 음성 체크인 맥락 반영',
+          sourceKind: 'voice',
+          sourceRef: 'voice_checkin',
+          capturedAt: now,
+        });
+      }
+
+      const record: DecisionRecord = {
+        id: `decision-${now}`,
+        intentId: `${profile.joinedDate}:${profile.goal}`,
+        question: '오늘 가장 실행 가능성이 높은 다음 행동은 무엇인가?',
+        options,
+        evidence: evidence.slice(0, 5),
+        selectedOptionId: options[0].id,
+        createdAt: now,
+      };
+
+      return record;
+    },
+    [],
+  );
+
+  const recordExecution = useCallback(
+    (status: ExecutionRecord['status'], actionType: string, delayMinutes = 0) => {
+      if (!decisionTerminalEnabled) return;
+
+      const latestDecision =
+        getItemJSON<DecisionRecord[]>(STORAGE_KEYS.decisionLog)?.[0];
+      const now = new Date().toISOString();
+
+      persistExecutionRecord({
+        id: `execution-${actionType}-${now}`,
+        decisionId: latestDecision?.id ?? 'legacy-decision',
+        actionType,
+        scheduledAt: now,
+        executedAt: now,
+        status,
+        delayMinutes,
+      });
+
+      trackEvent(`execution.${status}`, {
+        actionType,
+        delayMinutes,
+      });
+    },
+    [decisionTerminalEnabled],
+  );
+
+  const refreshDecisionQualityState = useCallback(
+    (options?: { persist?: boolean; emit?: boolean }) => {
+      if (!decisionTerminalEnabled) return;
+
+      const decisionRecords =
+        getItemJSON<DecisionRecord[]>(STORAGE_KEYS.decisionLog) ?? [];
+      const executionRecords =
+        getItemJSON<ExecutionRecord[]>(STORAGE_KEYS.executionLog) ?? [];
+      const governanceLogs =
+        getItemJSON<GovernanceAuditLog[]>(STORAGE_KEYS.governanceAuditLog) ?? [];
+      const failureLogs = getItemJSON<FailureLogEntry[]>(STORAGE_KEYS.failureLog) ?? [];
+
+      const nextExecutionMetrics = computeExecutionMetrics(executionRecords, 7);
+      const nextSafetyMetrics = computeSafetyMetrics(governanceLogs, 7);
+      const recoveryApplied = executionRecords.filter(
+        (record) => record.actionType === 'recovery_quest' && record.status === 'applied',
+      ).length;
+      const recoveryAttempts = failureLogs.length;
+
+      const snapshot = calculateDecisionQuality({
+        decisionRecords,
+        executionMetrics: nextExecutionMetrics,
+        recoveryAcceptRate:
+          recoveryAttempts > 0 ? recoveryApplied / recoveryAttempts : 1,
+        rerouteSuccessRate:
+          recoveryAttempts > 0 ? Math.min(1, recoveryApplied / recoveryAttempts) : 1,
+        safetyMetrics: nextSafetyMetrics,
+      });
+
+      setExecutionMetrics(nextExecutionMetrics);
+      setSafetyMetrics(nextSafetyMetrics);
+      setDecisionQualitySnapshot(snapshot);
+
+      if (options?.persist) {
+        const nextHistory = recordQualitySnapshot(snapshot);
+        setDecisionQualityHistory(nextHistory);
+      }
+
+      if (options?.emit) {
+        trackDecisionQuality(snapshot);
+      }
+    },
+    [decisionTerminalEnabled],
   );
 
   const adaptQuestsForContext = useCallback(
@@ -259,12 +521,40 @@ export function useAppOrchestrator(): UseAppOrchestratorResult {
 
         if (aiQuests && aiQuests.length > 0) {
           persistTodayQuests(adaptQuestsForContext(aiQuests));
+          if (decisionTerminalEnabled) {
+            const record = buildQuestDecisionRecord(profile, aiQuests, 'ai');
+            persistDecisionRecord(record);
+            trackEvent('decision.generated', {
+              source: 'ai',
+              valid: validateDecisionRecord(record).pass,
+            });
+          }
         } else {
           setDefaultQuests(profile);
+          if (decisionTerminalEnabled) {
+            const fallbackQuests = createDeterministicFallbackQuests(profile, {
+              energy,
+              voiceHint: latestVoiceCheckIn?.text,
+            });
+            const record = buildQuestDecisionRecord(
+              profile,
+              fallbackQuests,
+              'fallback',
+            );
+            persistDecisionRecord(record);
+            trackEvent('decision.generated', {
+              source: 'fallback',
+              valid: validateDecisionRecord(record).pass,
+            });
+          }
         }
 
         trackTiming('ai.generate.daily_quests', performance.now() - startedAt, {
           hasResult: !!aiQuests?.length,
+        });
+        refreshDecisionQualityState({
+          persist: true,
+          emit: true,
         });
       } catch (error) {
         trackError(error, {
@@ -275,7 +565,18 @@ export function useAppOrchestrator(): UseAppOrchestratorResult {
         setIsGeneratingQuests(false);
       }
     },
-    [adaptQuestsForContext, getQuestGenerationContext, persistTodayQuests, setDefaultQuests, techTree],
+    [
+      adaptQuestsForContext,
+      buildQuestDecisionRecord,
+      decisionTerminalEnabled,
+      energy,
+      getQuestGenerationContext,
+      latestVoiceCheckIn?.text,
+      persistTodayQuests,
+      refreshDecisionQualityState,
+      setDefaultQuests,
+      techTree,
+    ],
   );
 
   const refreshNextQuestFromVoiceContext = useCallback(
@@ -307,9 +608,26 @@ export function useAppOrchestrator(): UseAppOrchestratorResult {
       };
 
       persistTodayQuests(adaptQuestsForContext(updatedQuests, voiceText));
+
+      if (decisionTerminalEnabled) {
+        const record = buildQuestDecisionRecord(profile, updatedQuests, 'ai', voiceText);
+        persistDecisionRecord(record);
+        trackEvent('decision.generated', {
+          source: 'ai',
+          valid: validateDecisionRecord(record).pass,
+        });
+      }
+
       return true;
     },
-    [adaptQuestsForContext, getQuestGenerationContext, persistTodayQuests, techTree],
+    [
+      adaptQuestsForContext,
+      buildQuestDecisionRecord,
+      decisionTerminalEnabled,
+      getQuestGenerationContext,
+      persistTodayQuests,
+      techTree,
+    ],
   );
 
   const addXP = useCallback(
@@ -350,8 +668,21 @@ export function useAppOrchestrator(): UseAppOrchestratorResult {
         ...stats,
         totalDaysActive: stats.totalDaysActive + 1,
       });
+
+      recordExecution('applied', 'energy_checkin', 0);
+      logGovernanceEvent('health', true);
+      refreshDecisionQualityState({
+        persist: true,
+        emit: true,
+      });
     },
-    [addXP, stats],
+    [
+      addXP,
+      logGovernanceEvent,
+      recordExecution,
+      refreshDecisionQualityState,
+      stats,
+    ],
   );
 
   const handleOnboardingComplete = useCallback(
@@ -367,8 +698,45 @@ export function useAppOrchestrator(): UseAppOrchestratorResult {
       persistProfile(newProfile);
       persistCustomizationFlag(true);
 
+      if (decisionTerminalEnabled) {
+        const state: IntentState = {
+          goal: newProfile.goal,
+          values: [newProfile.goal],
+          constraints: newProfile.constraints
+            .split(',')
+            .map((value) => value.trim())
+            .filter(Boolean),
+          timeHorizon: newProfile.deadline,
+          updatedAt: new Date().toISOString(),
+          source: 'onboarding',
+        };
+        setIntentState(state);
+        persistIntentState(state);
+        trackEvent('intent.state_updated', {
+          source: 'onboarding',
+        });
+      }
+
       if (!isGeminiConfigured()) {
-        setDefaultQuests(newProfile);
+        const fallbackQuests = createDeterministicFallbackQuests(newProfile, {
+          energy,
+          voiceHint: latestVoiceCheckIn?.text,
+        });
+        persistTodayQuests(adaptQuestsForContext(fallbackQuests));
+
+        if (decisionTerminalEnabled) {
+          const record = buildQuestDecisionRecord(newProfile, fallbackQuests, 'fallback');
+          persistDecisionRecord(record);
+          trackEvent('decision.generated', {
+            source: 'fallback',
+            valid: validateDecisionRecord(record).pass,
+          });
+          logGovernanceEvent('decision', true);
+          refreshDecisionQualityState({
+            persist: true,
+            emit: true,
+          });
+        }
         return;
       }
 
@@ -385,8 +753,35 @@ export function useAppOrchestrator(): UseAppOrchestratorResult {
 
         if (aiQuests?.length) {
           persistTodayQuests(adaptQuestsForContext(aiQuests));
+
+          if (decisionTerminalEnabled) {
+            const record = buildQuestDecisionRecord(newProfile, aiQuests, 'ai');
+            persistDecisionRecord(record);
+            trackEvent('decision.generated', {
+              source: 'ai',
+              valid: validateDecisionRecord(record).pass,
+            });
+            logGovernanceEvent('decision', true);
+          }
         } else {
           setDefaultQuests(newProfile);
+
+          if (decisionTerminalEnabled) {
+            const fallbackQuests = createDeterministicFallbackQuests(newProfile, {
+              energy,
+              voiceHint: latestVoiceCheckIn?.text,
+            });
+            const record = buildQuestDecisionRecord(
+              newProfile,
+              fallbackQuests,
+              'fallback',
+            );
+            persistDecisionRecord(record);
+            trackEvent('decision.generated', {
+              source: 'fallback',
+              valid: validateDecisionRecord(record).pass,
+            });
+          }
         }
 
         if (aiTree) {
@@ -396,6 +791,10 @@ export function useAppOrchestrator(): UseAppOrchestratorResult {
 
         trackTiming('app.onboarding_complete', performance.now() - startedAt);
         showTransientMessage(insight || 'AI가 맞춤 퀘스트를 생성했어요! 🎯', 5000);
+        refreshDecisionQualityState({
+          persist: true,
+          emit: true,
+        });
       } catch (error) {
         trackError(error, {
           phase: 'handleOnboardingComplete',
@@ -407,8 +806,14 @@ export function useAppOrchestrator(): UseAppOrchestratorResult {
     },
     [
       adaptQuestsForContext,
+      buildQuestDecisionRecord,
+      decisionTerminalEnabled,
       getQuestGenerationContext,
+      logGovernanceEvent,
+      energy,
+      latestVoiceCheckIn?.text,
       persistTodayQuests,
+      refreshDecisionQualityState,
       setDefaultQuests,
       showTransientMessage,
     ],
@@ -429,10 +834,39 @@ export function useAppOrchestrator(): UseAppOrchestratorResult {
 
       if (aiQuests?.length) {
         persistTodayQuests(adaptQuestsForContext(aiQuests));
+        if (decisionTerminalEnabled && userProfile) {
+          const record = buildQuestDecisionRecord(userProfile, aiQuests, 'ai');
+          persistDecisionRecord(record);
+          trackEvent('decision.generated', {
+            source: 'ai',
+            valid: validateDecisionRecord(record).pass,
+          });
+          logGovernanceEvent('decision', true);
+        }
         showTransientMessage('새로운 퀘스트가 준비되었어요! ✨');
       } else {
         setDefaultQuests(userProfile);
+        if (decisionTerminalEnabled) {
+          const fallbackQuests = createDeterministicFallbackQuests(userProfile, {
+            energy,
+            voiceHint: latestVoiceCheckIn?.text,
+          });
+          const record = buildQuestDecisionRecord(
+            userProfile,
+            fallbackQuests,
+            'fallback',
+          );
+          persistDecisionRecord(record);
+          trackEvent('decision.generated', {
+            source: 'fallback',
+            valid: validateDecisionRecord(record).pass,
+          });
+        }
       }
+      refreshDecisionQualityState({
+        persist: true,
+        emit: true,
+      });
     } catch (error) {
       trackError(error, {
         phase: 'handleRegenerateQuests',
@@ -444,8 +878,14 @@ export function useAppOrchestrator(): UseAppOrchestratorResult {
     }
   }, [
     adaptQuestsForContext,
+    buildQuestDecisionRecord,
+    decisionTerminalEnabled,
+    energy,
     getQuestGenerationContext,
+    latestVoiceCheckIn?.text,
+    logGovernanceEvent,
     persistTodayQuests,
+    refreshDecisionQualityState,
     setDefaultQuests,
     showTransientMessage,
     techTree,
@@ -467,8 +907,23 @@ export function useAppOrchestrator(): UseAppOrchestratorResult {
         questId,
       });
 
+      const toggledQuest = updatedQuests.find((quest) => quest.id === questId);
+      if (toggledQuest?.completed) {
+        recordExecution('applied', 'quest_toggle', 0);
+        trackEvent('decision.selected', {
+          questId,
+          action: 'complete',
+        });
+      } else {
+        recordExecution('skipped', 'quest_toggle', 0);
+      }
+
       const wasCompleting = !previousQuests.find((quest) => quest.id === questId)?.completed;
       if (!wasCompleting) {
+        refreshDecisionQualityState({
+          persist: true,
+          emit: true,
+        });
         return;
       }
 
@@ -526,11 +981,18 @@ export function useAppOrchestrator(): UseAppOrchestratorResult {
           void loadAIInsight(updatedProfile);
         }
       }
+
+      refreshDecisionQualityState({
+        persist: true,
+        emit: true,
+      });
     },
     [
       addXP,
       loadAIInsight,
       persistTodayQuests,
+      recordExecution,
+      refreshDecisionQualityState,
       stats,
       techTree,
       todayQuests,
@@ -545,11 +1007,16 @@ export function useAppOrchestrator(): UseAppOrchestratorResult {
 
       setFailureQuest(quest);
       setIsFailureSheetOpen(true);
+      recordExecution('delayed', 'quest_failure', parseMinutes(quest.duration) ?? 15);
       trackEvent('quest.failed', {
         questId,
       });
+      refreshDecisionQualityState({
+        persist: true,
+        emit: true,
+      });
     },
-    [todayQuests],
+    [recordExecution, refreshDecisionQualityState, todayQuests],
   );
 
   const handleAcceptRecovery = useCallback(
@@ -590,15 +1057,28 @@ export function useAppOrchestrator(): UseAppOrchestratorResult {
       }
 
       setFailureQuest(null);
+      recordExecution('applied', 'recovery_quest', 0);
+      trackEvent('decision.selected', {
+        action: 'recovery',
+        rootCause: meta.rootCause,
+      });
+      logGovernanceEvent('task', true);
       trackEvent('quest.recovery_accepted', {
         rootCause: meta.rootCause,
+      });
+      refreshDecisionQualityState({
+        persist: true,
+        emit: true,
       });
     },
     [
       addXP,
       energy,
       failureQuest,
+      logGovernanceEvent,
       persistTodayQuests,
+      recordExecution,
+      refreshDecisionQualityState,
       showTransientMessage,
       stats,
       techTree,
@@ -628,6 +1108,8 @@ export function useAppOrchestrator(): UseAppOrchestratorResult {
     async (entry: VoiceCheckInEntry) => {
       setLatestVoiceCheckIn(entry);
       setItemJSON(STORAGE_KEYS.voiceCheckIn, entry);
+      logGovernanceEvent('health', true);
+      recordExecution('applied', 'voice_checkin', 0);
 
       const adjustedQuests = adaptQuestsForContext(todayQuests, entry.text);
       persistTodayQuests(adjustedQuests);
@@ -655,10 +1137,18 @@ export function useAppOrchestrator(): UseAppOrchestratorResult {
       } else {
         showTransientMessage('음성 체크인이 저장됐어요 🎙️', 2500);
       }
+
+      refreshDecisionQualityState({
+        persist: true,
+        emit: true,
+      });
     },
     [
       adaptQuestsForContext,
+      logGovernanceEvent,
       persistTodayQuests,
+      recordExecution,
+      refreshDecisionQualityState,
       refreshNextQuestFromVoiceContext,
       showTransientMessage,
       todayQuests,
@@ -700,6 +1190,12 @@ export function useAppOrchestrator(): UseAppOrchestratorResult {
         const persistedQuests = getItemJSON<Quest[]>(STORAGE_KEYS.quests);
         const persistedTree = getItemJSON<TechTreeResponse>(STORAGE_KEYS.techTree);
         const persistedVoiceCheckIn = getItemJSON<VoiceCheckInEntry>(STORAGE_KEYS.voiceCheckIn);
+        const persistedIntentState = getItemJSON<IntentState>(STORAGE_KEYS.intentState);
+        const persistedQualityHistory =
+          getOrInitJSON<DecisionQualitySnapshot[]>(
+            STORAGE_KEYS.decisionQualitySnapshots,
+            [],
+          );
         const persistedEnergy = getItemString(STORAGE_KEYS.energyToday);
         const persistedFuturePrompt = getItemString(STORAGE_KEYS.futureSelfPrompt);
         const persistedQuestDate = getItemString(STORAGE_KEYS.questDate);
@@ -721,6 +1217,29 @@ export function useAppOrchestrator(): UseAppOrchestratorResult {
 
         if (persistedVoiceCheckIn) {
           setLatestVoiceCheckIn(persistedVoiceCheckIn);
+        }
+
+        if (persistedIntentState) {
+          setIntentState(persistedIntentState);
+        } else if (decisionTerminalEnabled) {
+          const inferredIntent: IntentState = {
+            goal: profile.goal,
+            values: [profile.goal],
+            constraints: profile.constraints
+              .split(',')
+              .map((value) => value.trim())
+              .filter(Boolean),
+            timeHorizon: profile.deadline,
+            updatedAt: new Date().toISOString(),
+            source: 'manual',
+          };
+          setIntentState(inferredIntent);
+          persistIntentState(inferredIntent);
+        }
+
+        setDecisionQualityHistory(persistedQualityHistory);
+        if (persistedQualityHistory[0]) {
+          setDecisionQualitySnapshot(persistedQualityHistory[0]);
         }
 
         if (persistedEnergyDate === getTodayString() && persistedEnergy) {
@@ -746,6 +1265,11 @@ export function useAppOrchestrator(): UseAppOrchestratorResult {
           void loadAIInsight(profile);
         }
 
+        refreshDecisionQualityState({
+          persist: false,
+          emit: false,
+        });
+
         trackEvent('app.bootstrap', {
           customized: customizedFlag === 'true',
           hasProfile: !!persistedProfile,
@@ -767,7 +1291,13 @@ export function useAppOrchestrator(): UseAppOrchestratorResult {
         window.clearTimeout(energyTimer);
       }
     };
-  }, [loadAIInsight, refreshDailyQuests, setDefaultQuests]);
+  }, [
+    decisionTerminalEnabled,
+    loadAIInsight,
+    refreshDailyQuests,
+    refreshDecisionQualityState,
+    setDefaultQuests,
+  ]);
 
   return {
     currentScreen,
@@ -790,6 +1320,12 @@ export function useAppOrchestrator(): UseAppOrchestratorResult {
     futureSelfPrompt,
     isVoiceCheckInOpen,
     latestVoiceCheckIn,
+    intentState,
+    decisionQualitySnapshot,
+    decisionQualityHistory,
+    executionMetrics,
+    safetyMetrics,
+    decisionTerminalEnabled,
     completedCount,
     totalCount,
     completionRate,

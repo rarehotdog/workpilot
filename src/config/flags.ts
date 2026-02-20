@@ -1,6 +1,12 @@
 import { STORAGE_KEYS, getItemString, setItemString } from '../lib/app-storage';
 
-export type FeatureFlagKey = 'reliable_storage_v2' | 'ai_guardrails_v2' | 'telemetry_v1';
+export type FeatureFlagKey =
+  | 'reliable_storage_v2'
+  | 'ai_guardrails_v2'
+  | 'telemetry_v1'
+  | 'decision_terminal_v1'
+  | 'governance_audit_v1'
+  | 'goldenset_v1';
 
 export interface FeatureFlagConfig {
   enabled: boolean;
@@ -19,6 +25,18 @@ const DEFAULT_FLAGS: Record<FeatureFlagKey, FeatureFlagConfig> = {
   telemetry_v1: {
     enabled: true,
     rollout: Number(import.meta.env.VITE_FLAG_TELEMETRY_V1_ROLLOUT ?? 100),
+  },
+  decision_terminal_v1: {
+    enabled: true,
+    rollout: Number(import.meta.env.VITE_FLAG_DECISION_TERMINAL_V1_ROLLOUT ?? 100),
+  },
+  governance_audit_v1: {
+    enabled: true,
+    rollout: Number(import.meta.env.VITE_FLAG_GOVERNANCE_AUDIT_V1_ROLLOUT ?? 100),
+  },
+  goldenset_v1: {
+    enabled: true,
+    rollout: Number(import.meta.env.VITE_FLAG_GOLDENSET_V1_ROLLOUT ?? 100),
   },
 };
 

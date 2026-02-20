@@ -1,9 +1,15 @@
 import type { TechTreeResponse } from './gemini';
 import type {
+  DecisionQualitySnapshot,
+  DecisionRecord,
+  ExecutionMetrics,
+  ExecutionRecord,
   FailureLogEntry,
   FailureRootCause,
+  GovernanceAuditLog,
   Quest,
   QuestTimeOfDay,
+  SafetyMetrics,
   UserProfile,
 } from '../types/app';
 
@@ -307,4 +313,158 @@ export function rerouteTechTreeForRecovery(
   }
 
   return clonedTree;
+}
+
+export function validateDecisionRecord(record: DecisionRecord): {
+  pass: boolean;
+  reasons: string[];
+} {
+  const reasons: string[] = [];
+
+  if (record.options.length < 3) {
+    reasons.push('options must be at least 3');
+  }
+
+  const counterInvalid = record.options.some(
+    (option) => option.counterArguments.length < 2,
+  );
+  if (counterInvalid) {
+    reasons.push('each option must contain at least 2 counter arguments');
+  }
+
+  if (record.evidence.length < 3) {
+    reasons.push('evidence must be at least 3');
+  }
+
+  return {
+    pass: reasons.length === 0,
+    reasons,
+  };
+}
+
+export function computeExecutionMetrics(
+  records: ExecutionRecord[],
+  days = 7,
+): ExecutionMetrics {
+  const now = Date.now();
+  const windowMs = days * 24 * 60 * 60 * 1000;
+  const inWindow = records.filter((record) => {
+    const executedAt = Date.parse(record.executedAt);
+    if (Number.isNaN(executedAt)) return false;
+    return now - executedAt <= windowMs;
+  });
+
+  const total = inWindow.length;
+  const appliedCount = inWindow.filter((record) => record.status === 'applied').length;
+  const delayedCount = inWindow.filter((record) => record.status === 'delayed').length;
+  const skippedCount = inWindow.filter((record) => record.status === 'skipped').length;
+
+  const onTimeCount = inWindow.filter((record) => record.delayMinutes <= 0).length;
+
+  return {
+    windowDays: days,
+    total,
+    appliedCount,
+    delayedCount,
+    skippedCount,
+    appliedRate: total > 0 ? appliedCount / total : 0,
+    delayedRate: total > 0 ? delayedCount / total : 0,
+    onTimeRate: total > 0 ? onTimeCount / total : 0,
+  };
+}
+
+export function computeSafetyMetrics(
+  auditLogs: GovernanceAuditLog[],
+  days = 7,
+): SafetyMetrics {
+  const now = Date.now();
+  const windowMs = days * 24 * 60 * 60 * 1000;
+  const inWindow = auditLogs.filter((log) => {
+    const timestamp = Date.parse(log.timestamp);
+    if (Number.isNaN(timestamp)) return false;
+    return now - timestamp <= windowMs;
+  });
+
+  const riskCounts = inWindow.reduce<Record<'low' | 'medium' | 'high', number>>(
+    (accumulator, log) => {
+      accumulator[log.riskLevel] += 1;
+      return accumulator;
+    },
+    {
+      low: 0,
+      medium: 0,
+      high: 0,
+    },
+  );
+
+  const highRiskViolations = inWindow.filter(
+    (log) => log.riskLevel === 'high' && !log.approved,
+  ).length;
+
+  return {
+    windowDays: days,
+    totalAudits: inWindow.length,
+    riskCounts,
+    highRiskViolations,
+    highRiskViolationRate:
+      inWindow.length > 0 ? highRiskViolations / inWindow.length : 0,
+  };
+}
+
+export function calculateDecisionQuality(input: {
+  decisionRecords: DecisionRecord[];
+  executionMetrics: ExecutionMetrics;
+  recoveryAcceptRate: number;
+  rerouteSuccessRate: number;
+  safetyMetrics: SafetyMetrics;
+  timestamp?: string;
+}): DecisionQualitySnapshot {
+  const validDecisionCount = input.decisionRecords.filter(
+    (record) => validateDecisionRecord(record).pass,
+  ).length;
+  const structureRatio =
+    input.decisionRecords.length > 0
+      ? validDecisionCount / input.decisionRecords.length
+      : 1;
+
+  const structureScore = Math.round(Math.max(0, Math.min(40, structureRatio * 40)));
+
+  const executionScore = Math.round(
+    Math.max(
+      0,
+      Math.min(
+        35,
+        input.executionMetrics.appliedRate * 20 +
+          input.executionMetrics.onTimeRate * 15,
+      ),
+    ),
+  );
+
+  const recoveryScore = Math.round(
+    Math.max(
+      0,
+      Math.min(15, input.recoveryAcceptRate * 10 + input.rerouteSuccessRate * 5),
+    ),
+  );
+
+  const safetyScore = Math.round(
+    Math.max(
+      0,
+      Math.min(10, 10 - input.safetyMetrics.highRiskViolationRate * 10),
+    ),
+  );
+
+  const score = Math.max(
+    0,
+    Math.min(100, structureScore + executionScore + recoveryScore + safetyScore),
+  );
+
+  return {
+    timestamp: input.timestamp ?? new Date().toISOString(),
+    score,
+    structureScore,
+    executionScore,
+    recoveryScore,
+    safetyScore,
+  };
 }

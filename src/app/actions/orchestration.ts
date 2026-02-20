@@ -1,7 +1,18 @@
-import type { Quest, UserProfile } from '../../types/app';
+import type {
+  DecisionRecord,
+  ExecutionRecord,
+  GovernanceAuditLog,
+  IntentState,
+  Quest,
+  UserProfile,
+} from '../../types/app';
 import type { TechTreeResponse } from '../../lib/gemini';
 import {
   getItemJSON,
+  recordAuditLog,
+  recordDecisionLog,
+  recordExecutionLog,
+  recordIntentState,
   setItemJSON,
   setItemString,
   STORAGE_KEYS,
@@ -66,4 +77,20 @@ export function persistQuests(quests: Quest[]): void {
   if (isSupabaseConfigured()) {
     void saveQuests(quests);
   }
+}
+
+export function persistIntentState(state: IntentState): void {
+  recordIntentState(state);
+}
+
+export function persistDecisionRecord(record: DecisionRecord): void {
+  recordDecisionLog(record);
+}
+
+export function persistExecutionRecord(record: ExecutionRecord): void {
+  recordExecutionLog(record);
+}
+
+export function persistGovernanceAudit(log: GovernanceAuditLog): void {
+  recordAuditLog(log);
 }

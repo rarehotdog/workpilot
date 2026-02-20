@@ -1,6 +1,11 @@
 import { motion } from 'motion/react';
 import { CheckCircle2, Circle, Mic, Plus, Share2, X } from 'lucide-react';
-import type { Quest, UserProfile } from '../../types/app';
+import type {
+  DecisionQualitySnapshot,
+  ExecutionMetrics,
+  Quest,
+  UserProfile,
+} from '../../types/app';
 import type { UserStats } from '../../lib/gamification';
 import { Badge, Button, Card, CardContent, Progress } from '../ui';
 import AIInsight from './AIInsight';
@@ -26,6 +31,9 @@ interface HomeScreenProps {
   onOpenVoiceCheckIn?: () => void;
   futureSelfPrompt?: string;
   latestVoiceCheckIn?: string;
+  decisionTerminalEnabled?: boolean;
+  decisionQualitySnapshot?: DecisionQualitySnapshot | null;
+  executionMetrics?: ExecutionMetrics;
 }
 
 function buildContributionData(seed: number): number[][] {
@@ -63,6 +71,9 @@ export default function HomeScreen({
   onOpenVoiceCheckIn,
   futureSelfPrompt,
   latestVoiceCheckIn,
+  decisionTerminalEnabled = false,
+  decisionQualitySnapshot,
+  executionMetrics,
 }: HomeScreenProps) {
   void futureSelfPrompt;
   void latestVoiceCheckIn;
@@ -176,6 +187,31 @@ export default function HomeScreen({
             </div>
           </CardContent>
         </Card>
+
+        {decisionTerminalEnabled && decisionQualitySnapshot ? (
+          <Card className="rounded-2xl border border-violet-100 bg-white shadow-sm">
+            <CardContent className="card-padding">
+              <div className="mb-2 flex items-center justify-between">
+                <p className="caption-12 font-semibold text-violet-600">Decision Quality</p>
+                <p className="heading-3 text-gray-900">{decisionQualitySnapshot.score}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-xl bg-violet-50 p-3">
+                  <p className="caption-12 text-violet-500">Applied</p>
+                  <p className="body-15 font-semibold text-violet-700">
+                    {Math.round((executionMetrics?.appliedRate ?? 0) * 100)}%
+                  </p>
+                </div>
+                <div className="rounded-xl bg-amber-50 p-3">
+                  <p className="caption-12 text-amber-500">Delayed</p>
+                  <p className="body-15 font-semibold text-amber-700">
+                    {Math.round((executionMetrics?.delayedRate ?? 0) * 100)}%
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
 
         <EisenhowerMatrix quests={quests} onQuestToggle={onQuestToggle} />
 

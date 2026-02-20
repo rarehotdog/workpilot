@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { ChevronDown, Upload } from 'lucide-react';
-import type { UserProfile } from '../../types/app';
+import type {
+  DecisionQualitySnapshot,
+  ExecutionMetrics,
+  SafetyMetrics,
+  UserProfile,
+} from '../../types/app';
 import type { UserStats } from '../../lib/gamification';
 import { getYearImage, setItemString, STORAGE_KEYS } from '../../lib/app-storage';
 import { Button, Card, CardContent, Progress } from '../ui';
@@ -12,9 +17,25 @@ interface ProgressScreenProps {
   completedCount: number;
   totalCount: number;
   stats?: UserStats;
+  decisionTerminalEnabled?: boolean;
+  decisionQualitySnapshot?: DecisionQualitySnapshot | null;
+  decisionQualityHistory?: DecisionQualitySnapshot[];
+  executionMetrics?: ExecutionMetrics;
+  safetyMetrics?: SafetyMetrics;
 }
 
-export default function ProgressScreen({ profile, completionRate, completedCount, totalCount, stats }: ProgressScreenProps) {
+export default function ProgressScreen({
+  profile,
+  completionRate,
+  completedCount,
+  totalCount,
+  stats,
+  decisionTerminalEnabled = false,
+  decisionQualitySnapshot,
+  decisionQualityHistory = [],
+  executionMetrics,
+  safetyMetrics,
+}: ProgressScreenProps) {
   const [yearImage, setYearImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const goalImageKey = profile.goal || 'default';
@@ -184,6 +205,114 @@ export default function ProgressScreen({ profile, completionRate, completedCount
             </div>
           </CardContent>
         </Card>
+
+        {decisionTerminalEnabled && decisionQualitySnapshot ? (
+          <Card className="rounded-2xl border-gray-100 shadow-sm">
+            <CardContent className="card-padding">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="heading-3 text-gray-900">Decision Quality Breakdown</h3>
+                <span className="rounded-full bg-violet-50 px-2.5 py-1 body-13 font-semibold text-violet-700">
+                  DQI {decisionQualitySnapshot.score}
+                </span>
+              </div>
+              <div className="space-y-3">
+                {[
+                  {
+                    label: 'Structure',
+                    value: decisionQualitySnapshot.structureScore,
+                    max: 40,
+                  },
+                  {
+                    label: 'Execution',
+                    value: decisionQualitySnapshot.executionScore,
+                    max: 35,
+                  },
+                  {
+                    label: 'Recovery',
+                    value: decisionQualitySnapshot.recoveryScore,
+                    max: 15,
+                  },
+                  {
+                    label: 'Safety',
+                    value: decisionQualitySnapshot.safetyScore,
+                    max: 10,
+                  },
+                ].map((item) => (
+                  <div key={item.label}>
+                    <div className="mb-1 flex items-center justify-between">
+                      <span className="body-14 text-gray-700">{item.label}</span>
+                      <span className="body-13 font-semibold text-gray-900">
+                        {item.value}/{item.max}
+                      </span>
+                    </div>
+                    <Progress
+                      value={(item.value / item.max) * 100}
+                      className="h-2 bg-gray-100 [&>div]:bg-violet-500"
+                    />
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 grid grid-cols-3 gap-2">
+                <div className="rounded-xl bg-emerald-50 p-2.5">
+                  <p className="caption-12 text-emerald-500">Applied</p>
+                  <p className="body-15 font-semibold text-emerald-700">
+                    {Math.round((executionMetrics?.appliedRate ?? 0) * 100)}%
+                  </p>
+                </div>
+                <div className="rounded-xl bg-amber-50 p-2.5">
+                  <p className="caption-12 text-amber-500">Delayed</p>
+                  <p className="body-15 font-semibold text-amber-700">
+                    {Math.round((executionMetrics?.delayedRate ?? 0) * 100)}%
+                  </p>
+                </div>
+                <div className="rounded-xl bg-slate-50 p-2.5">
+                  <p className="caption-12 text-slate-500">On Time</p>
+                  <p className="body-15 font-semibold text-slate-700">
+                    {Math.round((executionMetrics?.onTimeRate ?? 0) * 100)}%
+                  </p>
+                </div>
+              </div>
+              {decisionQualityHistory.length > 0 ? (
+                <p className="caption-12 mt-3 text-gray-500">
+                  최근 {Math.min(7, decisionQualityHistory.length)}개 스냅샷 기반
+                </p>
+              ) : null}
+            </CardContent>
+          </Card>
+        ) : null}
+
+        {decisionTerminalEnabled && safetyMetrics ? (
+          <Card className="rounded-2xl border-gray-100 shadow-sm">
+            <CardContent className="card-padding">
+              <h3 className="heading-3 mb-4 text-gray-900">Governance Risk Trend</h3>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="rounded-xl bg-green-50 p-3">
+                  <p className="caption-12 text-green-600">Low</p>
+                  <p className="heading-3 text-green-700">{safetyMetrics.riskCounts.low}</p>
+                </div>
+                <div className="rounded-xl bg-yellow-50 p-3">
+                  <p className="caption-12 text-yellow-600">Medium</p>
+                  <p className="heading-3 text-yellow-700">{safetyMetrics.riskCounts.medium}</p>
+                </div>
+                <div className="rounded-xl bg-red-50 p-3">
+                  <p className="caption-12 text-red-600">High</p>
+                  <p className="heading-3 text-red-700">{safetyMetrics.riskCounts.high}</p>
+                </div>
+              </div>
+              <div className="mt-4 rounded-xl border border-gray-100 bg-gray-50 p-3">
+                <p className="body-14 text-gray-700">
+                  High-risk violation rate: {' '}
+                  <span className="font-semibold text-gray-900">
+                    {Math.round(safetyMetrics.highRiskViolationRate * 100)}%
+                  </span>
+                </p>
+                <p className="caption-12 mt-1 text-gray-500">
+                  감사 로그 {safetyMetrics.totalAudits}건(최근 {safetyMetrics.windowDays}일)
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
       </div>
     </div>
   );

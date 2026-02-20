@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "qa:screenshots": "node scripts/qa/screenshot-checklist.mjs",
-    "qa:screenshots:dry": "node scripts/qa/screenshot-checklist.mjs --dry-run"
+    "qa:screenshots:dry": "node scripts/qa/screenshot-checklist.mjs --dry-run",
+    "qa:goldenset": "node scripts/quality/run-goldenset.mjs",
+    "qa:goldenset:add": "node scripts/quality/add-goldenset-case.mjs"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

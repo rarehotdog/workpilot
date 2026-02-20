@@ -85,6 +85,9 @@ export default function App() {
               futureSelfPrompt={app.futureSelfPrompt}
               onOpenVoiceCheckIn={() => app.setIsVoiceCheckInOpen(true)}
               latestVoiceCheckIn={app.latestVoiceCheckIn?.text}
+              decisionTerminalEnabled={app.decisionTerminalEnabled}
+              decisionQualitySnapshot={app.decisionQualitySnapshot}
+              executionMetrics={app.executionMetrics}
             />
           </motion.div>
         ) : null}
@@ -107,6 +110,11 @@ export default function App() {
               completedCount={app.completedCount}
               totalCount={app.totalCount}
               stats={app.stats}
+              decisionTerminalEnabled={app.decisionTerminalEnabled}
+              decisionQualitySnapshot={app.decisionQualitySnapshot}
+              decisionQualityHistory={app.decisionQualityHistory}
+              executionMetrics={app.executionMetrics}
+              safetyMetrics={app.safetyMetrics}
             />
           </motion.div>
         ) : null}

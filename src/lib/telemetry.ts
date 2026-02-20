@@ -1,5 +1,5 @@
 import { isFlagEnabled } from '../config/flags';
-import type { AppEvent } from '../types/app';
+import type { AppEvent, DecisionQualitySnapshot } from '../types/app';
 
 interface TimingAttributes {
   [key: string]: string | number | boolean | null | undefined;
@@ -110,5 +110,15 @@ export function trackTiming(name: string, durationMs: number, attributes?: Timin
       durationMs,
       ...(event.attributes ?? {}),
     },
+  });
+}
+
+export function trackDecisionQuality(snapshot: DecisionQualitySnapshot): void {
+  trackEvent('decision.quality_scored', {
+    score: snapshot.score,
+    structureScore: snapshot.structureScore,
+    executionScore: snapshot.executionScore,
+    recoveryScore: snapshot.recoveryScore,
+    safetyScore: snapshot.safetyScore,
   });
 }
