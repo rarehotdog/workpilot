@@ -5,6 +5,8 @@ export type FeatureFlagKey =
   | 'ai_guardrails_v2'
   | 'telemetry_v1'
   | 'decision_terminal_v1'
+  | 'decision_log_ui_v1'
+  | 'sync_status_ui_v1'
   | 'governance_audit_v1'
   | 'goldenset_v1';
 
@@ -29,6 +31,14 @@ const DEFAULT_FLAGS: Record<FeatureFlagKey, FeatureFlagConfig> = {
   decision_terminal_v1: {
     enabled: true,
     rollout: Number(import.meta.env.VITE_FLAG_DECISION_TERMINAL_V1_ROLLOUT ?? 100),
+  },
+  decision_log_ui_v1: {
+    enabled: true,
+    rollout: Number(import.meta.env.VITE_FLAG_DECISION_LOG_UI_V1_ROLLOUT ?? 100),
+  },
+  sync_status_ui_v1: {
+    enabled: true,
+    rollout: Number(import.meta.env.VITE_FLAG_SYNC_STATUS_UI_V1_ROLLOUT ?? 100),
   },
   governance_audit_v1: {
     enabled: true,

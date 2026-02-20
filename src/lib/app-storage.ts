@@ -5,6 +5,8 @@ import type {
   GovernanceAuditLog,
   IntentState,
   StorageSchemaVersion,
+  SyncDiagnostics,
+  SyncDrainSummary,
   SyncOperationType,
   SyncOutboxItem,
 } from '../types/app';
@@ -13,6 +15,7 @@ export const STORAGE_KEYS = {
   schemaVersion: 'ltr_schema_version',
   rolloutSeed: 'ltr_rollout_seed',
   syncOutbox: 'ltr_sync_outbox',
+  syncLastDrain: 'ltr_sync_last_drain',
 
   profile: 'ltr_profile',
   quests: 'ltr_quests',
@@ -330,4 +333,22 @@ export function recordQualitySnapshot(
   snapshot: DecisionQualitySnapshot,
 ): DecisionQualitySnapshot[] {
   return appendBoundedArray(STORAGE_KEYS.decisionQualitySnapshots, snapshot, 180);
+}
+
+export function recordSyncDrainSummary(summary: SyncDrainSummary): SyncDrainSummary {
+  setItemJSON(STORAGE_KEYS.syncLastDrain, summary);
+  return summary;
+}
+
+export function getSyncDiagnostics(): SyncDiagnostics {
+  const online =
+    typeof navigator === 'undefined' ? true : navigator.onLine;
+  const outboxSize = getOutboxSize();
+  const lastDrain = getItemJSON<SyncDrainSummary>(STORAGE_KEYS.syncLastDrain);
+
+  return {
+    online,
+    outboxSize,
+    lastDrain,
+  };
 }

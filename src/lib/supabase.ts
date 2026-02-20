@@ -4,12 +4,15 @@ import {
   STORAGE_KEYS,
   drainOutbox,
   enqueueOutbox,
+  getOutboxSize,
   getItemString,
+  recordSyncDrainSummary,
   setItemString,
 } from './app-storage';
 import { trackError, trackEvent } from './telemetry';
 import type {
   Quest,
+  SyncDrainSummary,
   SyncOperationType,
   SyncOutboxItem,
   UserProfile,
@@ -308,18 +311,75 @@ async function replayOutboxItem(item: SyncOutboxItem, userId: string): Promise<b
   }
 }
 
-export async function flushSyncOutbox(): Promise<void> {
-  if (!supabase || !isFlagEnabled('reliable_storage_v2')) return;
+export async function flushSyncOutbox(): Promise<SyncDrainSummary> {
+  const runAt = new Date().toISOString();
+
+  if (!isFlagEnabled('reliable_storage_v2')) {
+    const summary = recordSyncDrainSummary({
+      runAt,
+      processed: 0,
+      remaining: getOutboxSize(),
+      dropped: 0,
+      success: true,
+      reason: 'reliable_storage_flag_disabled',
+    });
+    return summary;
+  }
+
+  if (!supabase) {
+    const summary = recordSyncDrainSummary({
+      runAt,
+      processed: 0,
+      remaining: getOutboxSize(),
+      dropped: 0,
+      success: true,
+      reason: 'supabase_not_configured',
+    });
+    return summary;
+  }
 
   const userId = getUserId();
-  const result = await drainOutbox((item) => replayOutboxItem(item, userId));
 
-  if (result.processed > 0 || result.remaining > 0 || result.dropped > 0) {
-    trackEvent('sync.outbox_drain', {
+  try {
+    const result = await drainOutbox((item) => replayOutboxItem(item, userId));
+    const summary = recordSyncDrainSummary({
+      runAt,
       processed: result.processed,
       remaining: result.remaining,
       dropped: result.dropped,
+      success: true,
     });
+
+    trackEvent('sync.outbox_drain', {
+      processed: summary.processed,
+      remaining: summary.remaining,
+      dropped: summary.dropped,
+      success: summary.success,
+    });
+
+    return summary;
+  } catch (error) {
+    const summary = recordSyncDrainSummary({
+      runAt,
+      processed: 0,
+      remaining: getOutboxSize(),
+      dropped: 0,
+      success: false,
+      reason: error instanceof Error ? error.message : String(error),
+    });
+
+    trackError(error, {
+      phase: 'flushSyncOutbox',
+    });
+
+    trackEvent('sync.outbox_drain', {
+      processed: summary.processed,
+      remaining: summary.remaining,
+      dropped: summary.dropped,
+      success: summary.success,
+    });
+
+    return summary;
   }
 }
 

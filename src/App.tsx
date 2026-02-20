@@ -113,8 +113,17 @@ export default function App() {
               decisionTerminalEnabled={app.decisionTerminalEnabled}
               decisionQualitySnapshot={app.decisionQualitySnapshot}
               decisionQualityHistory={app.decisionQualityHistory}
+              decisionLogItems={app.decisionLogItems}
+              decisionLogWindowDays={app.decisionLogWindowDays}
+              decisionLogLastUpdatedAt={app.decisionLogLastUpdatedAt}
+              decisionLogUiEnabled={app.decisionLogUiEnabled}
               executionMetrics={app.executionMetrics}
               safetyMetrics={app.safetyMetrics}
+              syncStatusUiEnabled={app.syncStatusUiEnabled}
+              syncDiagnostics={app.syncDiagnostics}
+              isSyncing={app.isSyncing}
+              onSyncRetry={app.handleSyncRetry}
+              remoteSyncEnabled={app.remoteSyncEnabled}
             />
           </motion.div>
         ) : null}

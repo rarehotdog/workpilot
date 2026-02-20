@@ -1,7 +1,9 @@
 import type { TechTreeResponse } from './gemini';
 import type {
+  DecisionLogViewItem,
   DecisionQualitySnapshot,
   DecisionRecord,
+  DecisionValidationSummary,
   ExecutionMetrics,
   ExecutionRecord,
   FailureLogEntry,
@@ -10,6 +12,7 @@ import type {
   Quest,
   QuestTimeOfDay,
   SafetyMetrics,
+  SanitizedDecisionEvidence,
   UserProfile,
 } from '../types/app';
 
@@ -340,6 +343,83 @@ export function validateDecisionRecord(record: DecisionRecord): {
     pass: reasons.length === 0,
     reasons,
   };
+}
+
+function normalizeSummaryText(value: string, maxLength = 84): string {
+  const compact = value.replace(/\s+/g, ' ').trim();
+  if (compact.length <= maxLength) return compact;
+  return `${compact.slice(0, maxLength - 1)}…`;
+}
+
+export function sanitizeEvidenceForUi(
+  evidence: DecisionRecord['evidence'],
+): SanitizedDecisionEvidence[] {
+  return evidence.map((item) => ({
+    id: item.id,
+    sourceKind: item.sourceKind,
+    capturedAt: item.capturedAt,
+    title: normalizeSummaryText(item.title),
+  }));
+}
+
+export function getDecisionValidationSummary(
+  record: DecisionRecord,
+): DecisionValidationSummary {
+  const result = validateDecisionRecord(record);
+  return {
+    pass: result.pass,
+    reasons: result.reasons,
+  };
+}
+
+export function buildDecisionLogView(
+  decisions: DecisionRecord[],
+  executions: ExecutionRecord[],
+  options?: { windowDays?: number },
+): DecisionLogViewItem[] {
+  const windowDays = options?.windowDays ?? 14;
+  const windowMs = windowDays * 24 * 60 * 60 * 1000;
+  const now = Date.now();
+
+  const filteredDecisions = decisions
+    .filter((record) => {
+      const createdAt = Date.parse(record.createdAt);
+      if (Number.isNaN(createdAt)) return false;
+      return now - createdAt <= windowMs;
+    })
+    .sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt));
+
+  return filteredDecisions.map((record) => {
+    const selectedOption =
+      record.options.find((option) => option.id === record.selectedOptionId) ??
+      record.options[0];
+    const matchedExecutions = executions
+      .filter((item) => item.decisionId === record.id)
+      .sort((left, right) => Date.parse(right.executedAt) - Date.parse(left.executedAt));
+    const latestExecution = matchedExecutions[0];
+    const validation = getDecisionValidationSummary(record);
+
+    return {
+      id: record.id,
+      decisionId: record.id,
+      createdAt: record.createdAt,
+      question: normalizeSummaryText(record.question, 120),
+      selectedOptionId: record.selectedOptionId,
+      selectedOptionTitle: selectedOption?.title ?? '선택 옵션 없음',
+      options: record.options,
+      evidence: sanitizeEvidenceForUi(record.evidence),
+      validation,
+      execution: {
+        latestStatus: latestExecution?.status ?? 'pending',
+        latestExecutedAt: latestExecution?.executedAt ?? null,
+        latestDelayMinutes:
+          typeof latestExecution?.delayMinutes === 'number'
+            ? latestExecution.delayMinutes
+            : null,
+        totalExecutions: matchedExecutions.length,
+      },
+    };
+  });
 }
 
 export function computeExecutionMetrics(

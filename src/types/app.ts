@@ -68,6 +68,18 @@ export interface DecisionRecord {
   createdAt: string;
 }
 
+export interface DecisionValidationSummary {
+  pass: boolean;
+  reasons: string[];
+}
+
+export interface SanitizedDecisionEvidence {
+  id: string;
+  title: string;
+  sourceKind: DecisionEvidenceSourceKind;
+  capturedAt: string;
+}
+
 export type ExecutionStatus = 'applied' | 'delayed' | 'skipped';
 
 export interface ExecutionRecord {
@@ -78,6 +90,26 @@ export interface ExecutionRecord {
   executedAt: string;
   status: ExecutionStatus;
   delayMinutes: number;
+}
+
+export interface DecisionLogExecutionSummary {
+  latestStatus: ExecutionStatus | 'pending';
+  latestExecutedAt: string | null;
+  latestDelayMinutes: number | null;
+  totalExecutions: number;
+}
+
+export interface DecisionLogViewItem {
+  id: string;
+  decisionId: string;
+  createdAt: string;
+  question: string;
+  selectedOptionId: string;
+  selectedOptionTitle: string;
+  options: DecisionOption[];
+  evidence: SanitizedDecisionEvidence[];
+  validation: DecisionValidationSummary;
+  execution: DecisionLogExecutionSummary;
 }
 
 export type GovernanceRiskLevel = 'low' | 'medium' | 'high';
@@ -179,6 +211,21 @@ export interface SyncOutboxItem {
   lastError?: string;
 }
 
+export interface SyncDrainSummary {
+  runAt: string;
+  processed: number;
+  remaining: number;
+  dropped: number;
+  success: boolean;
+  reason?: string;
+}
+
+export interface SyncDiagnostics {
+  online: boolean;
+  outboxSize: number;
+  lastDrain: SyncDrainSummary | null;
+}
+
 export type AppEventLevel = 'info' | 'warn' | 'error';
 
 export interface AppEvent {
@@ -208,6 +255,12 @@ export interface AppEvent {
     | 'governance.risk_flagged'
     | 'goldenset.regression_run'
     | 'goldenset.case_added'
+    | 'ui.decision_log_opened'
+    | 'ui.decision_log_closed'
+    | 'ui.decision_log_item_opened'
+    | 'sync.manual_retry_clicked'
+    | 'sync.manual_retry_succeeded'
+    | 'sync.manual_retry_failed'
     | 'ui.modal_opened'
     | 'ui.modal_closed'
     | string;

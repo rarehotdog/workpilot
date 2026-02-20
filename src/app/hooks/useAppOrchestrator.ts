@@ -15,7 +15,7 @@ import {
   type QuestGenerationContext,
   type TechTreeResponse,
 } from '../../lib/gemini';
-import { flushSyncOutbox } from '../../lib/supabase';
+import { flushSyncOutbox, isSupabaseConfigured } from '../../lib/supabase';
 import {
   calculateEnergyCheckXP,
   calculatePerfectDayXP,
@@ -27,6 +27,7 @@ import {
   type UserStats,
 } from '../../lib/gamification';
 import {
+  getSyncDiagnostics,
   getOrInitJSON,
   recordQualitySnapshot,
   STORAGE_KEYS,
@@ -38,6 +39,7 @@ import {
 } from '../../lib/app-storage';
 import {
   advanceTechTree,
+  buildDecisionLogView,
   calculateDecisionQuality,
   computeExecutionMetrics,
   computeSafetyMetrics,
@@ -68,6 +70,7 @@ import {
   persistTechTree,
 } from '../actions/orchestration';
 import type {
+  DecisionLogViewItem,
   DecisionQualitySnapshot,
   DecisionRecord,
   ExecutionMetrics,
@@ -78,6 +81,7 @@ import type {
   Quest,
   SafetyMetrics,
   Screen,
+  SyncDiagnostics,
   UserProfile,
   VoiceCheckInEntry,
 } from '../../types/app';
@@ -117,9 +121,17 @@ interface UseAppOrchestratorResult {
   intentState: IntentState | null;
   decisionQualitySnapshot: DecisionQualitySnapshot | null;
   decisionQualityHistory: DecisionQualitySnapshot[];
+  decisionLogItems: DecisionLogViewItem[];
+  decisionLogWindowDays: number;
+  decisionLogLastUpdatedAt: string | null;
   executionMetrics: ExecutionMetrics;
   safetyMetrics: SafetyMetrics;
+  syncDiagnostics: SyncDiagnostics;
+  isSyncing: boolean;
+  remoteSyncEnabled: boolean;
   decisionTerminalEnabled: boolean;
+  decisionLogUiEnabled: boolean;
+  syncStatusUiEnabled: boolean;
   completedCount: number;
   totalCount: number;
   completionRate: number;
@@ -139,11 +151,15 @@ interface UseAppOrchestratorResult {
   handleStartCustomization: () => void;
   handleFutureSelfSave: (prompt: string) => void;
   handleVoiceCheckInSave: (entry: VoiceCheckInEntry) => Promise<void>;
+  handleSyncRetry: () => Promise<void>;
 }
 
 export function useAppOrchestrator(): UseAppOrchestratorResult {
   const decisionTerminalEnabled = isFlagEnabled('decision_terminal_v1');
+  const decisionLogUiEnabled = isFlagEnabled('decision_log_ui_v1');
+  const syncStatusUiEnabled = isFlagEnabled('sync_status_ui_v1');
   const governanceAuditEnabled = isFlagEnabled('governance_audit_v1');
+  const remoteSyncEnabled = isSupabaseConfigured();
 
   const [currentScreen, setCurrentScreen] = useState<Screen>('home');
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -173,6 +189,8 @@ export function useAppOrchestrator(): UseAppOrchestratorResult {
   const [decisionQualityHistory, setDecisionQualityHistory] = useState<
     DecisionQualitySnapshot[]
   >([]);
+  const [decisionLogItems, setDecisionLogItems] = useState<DecisionLogViewItem[]>([]);
+  const [decisionLogLastUpdatedAt, setDecisionLogLastUpdatedAt] = useState<string | null>(null);
   const [executionMetrics, setExecutionMetrics] = useState<ExecutionMetrics>({
     windowDays: 7,
     total: 0,
@@ -194,10 +212,15 @@ export function useAppOrchestrator(): UseAppOrchestratorResult {
     highRiskViolations: 0,
     highRiskViolationRate: 0,
   });
+  const [syncDiagnostics, setSyncDiagnostics] = useState<SyncDiagnostics>(() =>
+    getSyncDiagnostics(),
+  );
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const completedCount = todayQuests.filter((quest) => quest.completed).length;
   const totalCount = todayQuests.length;
   const completionRate = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
+  const decisionLogWindowDays = 14;
 
   const bootstrapGuardRef = useRef(false);
   const aiMessageTimerRef = useRef<number | null>(null);
@@ -223,6 +246,10 @@ export function useAppOrchestrator(): UseAppOrchestratorResult {
     },
     [clearAiMessageTimer],
   );
+
+  const refreshSyncDiagnostics = useCallback(() => {
+    setSyncDiagnostics(getSyncDiagnostics());
+  }, []);
 
   const logGovernanceEvent = useCallback(
     (scope: 'health' | 'decision' | 'task' | 'profile', approved: boolean) => {
@@ -389,6 +416,13 @@ export function useAppOrchestrator(): UseAppOrchestratorResult {
       const governanceLogs =
         getItemJSON<GovernanceAuditLog[]>(STORAGE_KEYS.governanceAuditLog) ?? [];
       const failureLogs = getItemJSON<FailureLogEntry[]>(STORAGE_KEYS.failureLog) ?? [];
+      const nextDecisionLogItems = buildDecisionLogView(
+        decisionRecords,
+        executionRecords,
+        {
+          windowDays: decisionLogWindowDays,
+        },
+      );
 
       const nextExecutionMetrics = computeExecutionMetrics(executionRecords, 7);
       const nextSafetyMetrics = computeSafetyMetrics(governanceLogs, 7);
@@ -410,6 +444,8 @@ export function useAppOrchestrator(): UseAppOrchestratorResult {
       setExecutionMetrics(nextExecutionMetrics);
       setSafetyMetrics(nextSafetyMetrics);
       setDecisionQualitySnapshot(snapshot);
+      setDecisionLogItems(nextDecisionLogItems);
+      setDecisionLogLastUpdatedAt(new Date().toISOString());
 
       if (options?.persist) {
         const nextHistory = recordQualitySnapshot(snapshot);
@@ -420,7 +456,7 @@ export function useAppOrchestrator(): UseAppOrchestratorResult {
         trackDecisionQuality(snapshot);
       }
     },
-    [decisionTerminalEnabled],
+    [decisionLogWindowDays, decisionTerminalEnabled],
   );
 
   const adaptQuestsForContext = useCallback(
@@ -486,9 +522,26 @@ export function useAppOrchestrator(): UseAppOrchestratorResult {
         energy,
         voiceHint: latestVoiceCheckIn?.text,
       });
-      persistTodayQuests(adaptQuestsForContext(quests));
+      const adaptedQuests = adaptQuestsForContext(quests);
+      persistTodayQuests(adaptedQuests);
+
+      if (decisionTerminalEnabled) {
+        const record = buildQuestDecisionRecord(profile, adaptedQuests, 'fallback');
+        persistDecisionRecord(record);
+        trackEvent('decision.generated', {
+          source: 'fallback',
+          valid: validateDecisionRecord(record).pass,
+        });
+      }
     },
-    [adaptQuestsForContext, energy, latestVoiceCheckIn?.text, persistTodayQuests],
+    [
+      adaptQuestsForContext,
+      buildQuestDecisionRecord,
+      decisionTerminalEnabled,
+      energy,
+      latestVoiceCheckIn?.text,
+      persistTodayQuests,
+    ],
   );
 
   const loadAIInsight = useCallback(async (profile: UserProfile) => {
@@ -1156,6 +1209,63 @@ export function useAppOrchestrator(): UseAppOrchestratorResult {
     ],
   );
 
+  const handleSyncRetry = useCallback(async () => {
+    trackEvent('sync.manual_retry_clicked', {
+      online: typeof navigator === 'undefined' ? true : navigator.onLine,
+    });
+
+    if (!isSupabaseConfigured()) {
+      showTransientMessage('클라우드 동기화가 비활성화되어 있어요.', 2500);
+      refreshSyncDiagnostics();
+      return;
+    }
+
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      showTransientMessage('오프라인 상태예요. 연결되면 자동 동기화돼요.', 2500);
+      refreshSyncDiagnostics();
+      return;
+    }
+
+    setIsSyncing(true);
+    try {
+      const summary = await flushSyncOutbox();
+      refreshSyncDiagnostics();
+
+      if (!summary.success) {
+        trackEvent('sync.manual_retry_failed', {
+          reason: summary.reason ?? 'unknown',
+          remaining: summary.remaining,
+          dropped: summary.dropped,
+        });
+        showTransientMessage('동기화 중 문제가 발생했어요. 잠시 후 다시 시도해 주세요.', 3000);
+        return;
+      }
+
+      trackEvent('sync.manual_retry_succeeded', {
+        processed: summary.processed,
+        remaining: summary.remaining,
+        dropped: summary.dropped,
+      });
+
+      if (summary.remaining > 0 || summary.dropped > 0) {
+        showTransientMessage(`동기화 완료: 남은 ${summary.remaining}건`, 2500);
+      } else {
+        showTransientMessage('동기화를 완료했어요.', 2200);
+      }
+    } catch (error) {
+      trackError(error, {
+        phase: 'handleSyncRetry',
+      });
+      trackEvent('sync.manual_retry_failed', {
+        reason: error instanceof Error ? error.message : String(error),
+      });
+      showTransientMessage('동기화 중 문제가 발생했어요. 잠시 후 다시 시도해 주세요.', 3000);
+    } finally {
+      setIsSyncing(false);
+      refreshSyncDiagnostics();
+    }
+  }, [refreshSyncDiagnostics, showTransientMessage]);
+
   useEffect(() => {
     return () => {
       clearAiMessageTimer();
@@ -1164,14 +1274,31 @@ export function useAppOrchestrator(): UseAppOrchestratorResult {
 
   useEffect(() => {
     const onOnline = () => {
-      void flushSyncOutbox();
+      void (async () => {
+        setIsSyncing(true);
+        try {
+          const summary = await flushSyncOutbox();
+          if (summary.success && summary.processed > 0) {
+            showTransientMessage('대기 중이던 동기화를 완료했어요.', 2200);
+          }
+        } finally {
+          setIsSyncing(false);
+          refreshSyncDiagnostics();
+        }
+      })();
+    };
+
+    const onOffline = () => {
+      refreshSyncDiagnostics();
     };
 
     window.addEventListener('online', onOnline);
+    window.addEventListener('offline', onOffline);
     return () => {
       window.removeEventListener('online', onOnline);
+      window.removeEventListener('offline', onOffline);
     };
-  }, []);
+  }, [refreshSyncDiagnostics, showTransientMessage]);
 
   useEffect(() => {
     if (bootstrapGuardRef.current) return;
@@ -1185,6 +1312,7 @@ export function useAppOrchestrator(): UseAppOrchestratorResult {
       try {
         migrateStorageIfNeeded();
         await flushSyncOutbox();
+        refreshSyncDiagnostics();
 
         const persistedProfile = getItemJSON<UserProfile>(STORAGE_KEYS.profile);
         const persistedQuests = getItemJSON<Quest[]>(STORAGE_KEYS.quests);
@@ -1257,6 +1385,26 @@ export function useAppOrchestrator(): UseAppOrchestratorResult {
           setDefaultQuests(profile);
         }
 
+        if (decisionTerminalEnabled) {
+          const existingDecisionRecords =
+            getItemJSON<DecisionRecord[]>(STORAGE_KEYS.decisionLog) ?? [];
+          if (existingDecisionRecords.length === 0) {
+            const bootstrapQuests = getItemJSON<Quest[]>(STORAGE_KEYS.quests) ?? [];
+            if (bootstrapQuests.length > 0) {
+              const seedRecord = buildQuestDecisionRecord(
+                profile,
+                bootstrapQuests,
+                'fallback',
+              );
+              persistDecisionRecord(seedRecord);
+              trackEvent('decision.generated', {
+                source: 'bootstrap_seed',
+                valid: validateDecisionRecord(seedRecord).pass,
+              });
+            }
+          }
+        }
+
         if (persistedProfile && persistedEnergyDate !== getTodayString()) {
           energyTimer = window.setTimeout(() => setIsEnergyOpen(true), 1000);
         }
@@ -1281,6 +1429,7 @@ export function useAppOrchestrator(): UseAppOrchestratorResult {
       } finally {
         setIsLoading(false);
         trackTiming('app.bootstrap.duration', performance.now() - bootstrapStartedAt);
+        refreshSyncDiagnostics();
       }
     };
 
@@ -1292,8 +1441,10 @@ export function useAppOrchestrator(): UseAppOrchestratorResult {
       }
     };
   }, [
+    buildQuestDecisionRecord,
     decisionTerminalEnabled,
     loadAIInsight,
+    refreshSyncDiagnostics,
     refreshDailyQuests,
     refreshDecisionQualityState,
     setDefaultQuests,
@@ -1323,9 +1474,17 @@ export function useAppOrchestrator(): UseAppOrchestratorResult {
     intentState,
     decisionQualitySnapshot,
     decisionQualityHistory,
+    decisionLogItems,
+    decisionLogWindowDays,
+    decisionLogLastUpdatedAt,
     executionMetrics,
     safetyMetrics,
+    syncDiagnostics,
+    isSyncing,
+    remoteSyncEnabled,
     decisionTerminalEnabled,
+    decisionLogUiEnabled,
+    syncStatusUiEnabled,
     completedCount,
     totalCount,
     completionRate,
@@ -1345,5 +1504,6 @@ export function useAppOrchestrator(): UseAppOrchestratorResult {
     handleStartCustomization,
     handleFutureSelfSave,
     handleVoiceCheckInSave,
+    handleSyncRetry,
   };
 }
