@@ -20,7 +20,7 @@ export function BadgeGrid({ earnedBadgeIds, className = '' }: BadgeDisplayProps)
             }`}
           >
             <span className="text-2xl">{badge.emoji}</span>
-            <span className="text-11 text-center text-[#6B7280] leading-tight">{badge.title}</span>
+            <span className="caption-11 text-center text-[#6B7280] leading-tight">{badge.title}</span>
           </div>
         );
       })}
@@ -70,11 +70,11 @@ export function BadgeUnlockModal({ badge, isOpen, onClose }: BadgeUnlockProps) {
                 {badge.emoji}
               </motion.div>
 
-              <h3 className="text-22 font-bold text-gray-900 mb-1">뱃지 획득!</h3>
-              <p className="text-15 font-semibold text-[#7C3AED] mb-2">{badge.title}</p>
-              <p className="text-13 text-[#9CA3AF]">{badge.description}</p>
+              <h3 className="heading-2 text-gray-900 mb-1">뱃지 획득!</h3>
+              <p className="body-15 font-semibold text-[#7C3AED] mb-2">{badge.title}</p>
+              <p className="body-13 text-[#9CA3AF]">{badge.description}</p>
 
-              <button onClick={onClose} className="mt-6 w-full bg-[#7C3AED] text-white rounded-14 py-3 text-15 font-semibold">
+              <button onClick={onClose} className="mt-6 w-full cta-primary bg-[#7C3AED] text-white">
                 멋져요!
               </button>
             </div>

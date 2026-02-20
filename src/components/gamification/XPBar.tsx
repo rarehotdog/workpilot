@@ -13,8 +13,8 @@ export default function XPBar({ xp, level, className = '' }: XPBarProps) {
   return (
     <div className={className}>
       <div className="flex items-center justify-between mb-1">
-        <span className="text-12 font-semibold text-[#7C3AED]">Lv.{level}</span>
-        <span className="text-11 text-[#9CA3AF]">{current}/{required} XP</span>
+        <span className="caption-12 font-semibold text-[#7C3AED]">Lv.{level}</span>
+        <span className="caption-11 text-[#9CA3AF]">{current}/{required} XP</span>
       </div>
       <div className="h-2 bg-purple-100 rounded-full overflow-hidden">
         <motion.div

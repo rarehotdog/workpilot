@@ -66,7 +66,7 @@ export default function LevelUpModal({ isOpen, onClose, newLevel, xpGained }: Le
                   initial={{ y: 20, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
                   transition={{ delay: 0.2 }}
-                  className="text-28 font-bold text-gray-900 mb-1"
+                  className="heading-1 text-gray-900 mb-1"
                 >
                   Level Up!
                 </motion.h2>
@@ -76,8 +76,8 @@ export default function LevelUpModal({ isOpen, onClose, newLevel, xpGained }: Le
                   animate={{ y: 0, opacity: 1 }}
                   transition={{ delay: 0.3 }}
                 >
-                  <p className="text-36 font-extrabold text-[#7C3AED]">Lv.{newLevel}</p>
-                  <p className="text-15 text-[#9CA3AF] mt-1">{getLevelTitle(newLevel)}</p>
+                  <p className="display-36 font-extrabold text-[#7C3AED]">Lv.{newLevel}</p>
+                  <p className="body-15 text-[#9CA3AF] mt-1">{getLevelTitle(newLevel)}</p>
                 </motion.div>
 
                 <motion.div
@@ -86,7 +86,7 @@ export default function LevelUpModal({ isOpen, onClose, newLevel, xpGained }: Le
                   transition={{ delay: 0.4 }}
                   className="mt-4 bg-purple-50 rounded-2xl p-3"
                 >
-                  <p className="text-14 text-[#7C3AED] font-semibold">+{xpGained} XP 획득!</p>
+                  <p className="body-14 text-[#7C3AED] font-semibold">+{xpGained} XP 획득!</p>
                 </motion.div>
 
                 <motion.button
@@ -94,7 +94,7 @@ export default function LevelUpModal({ isOpen, onClose, newLevel, xpGained }: Le
                   animate={{ y: 0, opacity: 1 }}
                   transition={{ delay: 0.5 }}
                   onClick={onClose}
-                  className="mt-6 w-full h-12 bg-[#7C3AED] text-white rounded-14 text-15 font-semibold"
+                  className="mt-6 cta-primary w-full bg-[#7C3AED] text-white"
                 >
                   계속하기
                 </motion.button>

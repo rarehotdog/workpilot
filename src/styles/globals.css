@@ -4,7 +4,7 @@
 
 :root {
   --font-size: 16px;
-  --font-sans: 'Pretendard', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-sans: 'Pretendard Variable', 'Pretendard', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
   --background: #f9fafb;
   --foreground: #111827;
@@ -182,7 +182,10 @@ a {
 
 /* --- Design Token Utilities --- */
 
-/* Tracking */
+/* Tracking
+ * Keep heading tracking centralized here.
+ * Do not add inline letter-spacing/tracking utilities in component markup.
+ */
 .tracking-tight-custom {
   letter-spacing: var(--tracking-heading-tight);
 }
@@ -238,15 +241,38 @@ a {
   line-height: 1.35;
 }
 
-/* Font sizes matching Figma */
+.label-12 {
+  font-size: 12px;
+  line-height: 1.38;
+}
+
+.stat-18 {
+  font-size: 18px;
+  line-height: 1.35;
+}
+
+.display-36 {
+  font-size: 36px;
+  line-height: 1.15;
+  letter-spacing: -0.4px;
+}
+
+/* @deprecated: legacy raw text classes
+ * Prefer semantic tokens: heading-*, body-*, caption-*, label-12, stat-18, display-36.
+ * Keep aliases for gradual migration without visual regressions.
+ */
 .text-28 {
   font-size: 28px;
   line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: var(--tracking-heading-tight);
 }
 
 .text-22 {
   font-size: 22px;
   line-height: 1.28;
+  font-weight: 700;
+  letter-spacing: var(--tracking-heading-snug);
 }
 
 .text-36 {
@@ -258,6 +284,7 @@ a {
 .text-18 {
   font-size: 18px;
   line-height: 1.4;
+  letter-spacing: var(--tracking-heading-snug);
 }
 
 .text-15 {

@@ -68,6 +68,7 @@ export default function EnergyCheckIn({ isOpen, onClose, onSubmit }: EnergyCheck
                   <X className="h-4 w-4 text-gray-500" />
                 </Button>
               </div>
+              <p className="modal-subtle mb-4">오늘 상태를 반영해 퀘스트 강도를 조절합니다</p>
 
               <div className="mb-8">
                 <p className="body-14 mb-4 text-[#9CA3AF]">에너지 레벨</p>

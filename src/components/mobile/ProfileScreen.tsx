@@ -90,7 +90,7 @@ export default function ProfileScreen({ profile, onStartCustomization, isCustomi
 
         <div className="space-y-2 px-1 py-2">
           {footerLinks.map((label) => (
-            <Button key={label} variant="link" className="h-auto p-0 text-sm font-medium text-blue-500">
+            <Button key={label} variant="link" className="h-auto p-0 body-14 font-medium text-blue-500">
               {label}
             </Button>
           ))}

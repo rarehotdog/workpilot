@@ -121,6 +121,7 @@ export default function ShareCard({ isOpen, onClose, profile, streak, level, com
                   <X className="h-4 w-4 text-gray-500" />
                 </Button>
               </div>
+              <p className="modal-subtle mb-4">오늘의 성취를 카드로 저장하거나 공유해보세요</p>
 
               <Card
                 ref={cardRef}
@@ -132,7 +133,7 @@ export default function ShareCard({ isOpen, onClose, profile, streak, level, com
 
                   <p className="caption-12 mb-6 font-medium text-white/60">LIFE TREADMILLS</p>
 
-                  <p className="mb-2 text-36 font-extrabold leading-none">{streak}일 연속 🔥</p>
+                  <p className="mb-2 display-36 font-extrabold">{streak}일 연속 🔥</p>
                   <p className="body-15 font-semibold">{profile.name}</p>
                   <p className="body-13 mt-1 text-white/70">Lv.{level} · {profile.goal}</p>
 

@@ -89,10 +89,10 @@ export default function Tready({ level, isRunning, isSad, completionRate, classN
 
           {/* Level badge */}
           <div className="mt-3 flex items-center gap-2">
-            <span className="bg-white/40 backdrop-blur-sm px-3 py-1 rounded-full text-13 font-bold text-gray-800">
+            <span className="bg-white/40 backdrop-blur-sm px-3 py-1 rounded-full body-13 font-bold text-gray-800">
               Lv.{level}
             </span>
-            <span className="text-13 font-medium text-gray-700/80">{title}</span>
+            <span className="caption-12 font-medium text-gray-700/80">{title}</span>
           </div>
         </div>
 

@@ -64,7 +64,7 @@ export default function YearProgressWidget({ currentDay, goalId }: YearProgressW
           </div>
           <div className="flex items-center gap-2">
             <div className="text-right">
-              <p className="text-3xl font-bold text-white">{percentage}%</p>
+              <p className="heading-1 font-bold text-white">{percentage}%</p>
               <p className="caption-12 text-white/60">{dayOfYear}/{totalDays} days</p>
             </div>
             <button
@@ -99,7 +99,7 @@ export default function YearProgressWidget({ currentDay, goalId }: YearProgressW
           </div>
         </div>
 
-        <div className="flex items-center justify-between text-xs">
+        <div className="flex items-center justify-between">
           <div className="bg-white/10 backdrop-blur-sm rounded-lg px-2 py-1">
             <span className="caption-12 text-white/70">Achievement: </span>
             <span className="caption-12 text-white font-bold">{achievementRate.toFixed(0)}%</span>

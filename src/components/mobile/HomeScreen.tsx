@@ -144,14 +144,14 @@ export default function HomeScreen({
           <div className="grid grid-cols-3 gap-2">
             <Card className="border-0 bg-gradient-to-br from-blue-50 to-blue-100">
               <CardContent className="px-3 py-2">
-                <p className="mb-0.5 text-xs text-blue-600">Today</p>
-                <p className="text-lg font-bold text-blue-900">{completedToday}/{quests.length}</p>
+                <p className="mb-0.5 label-12 text-blue-600">Today</p>
+                <p className="stat-18 font-bold text-blue-900">{completedToday}/{quests.length}</p>
               </CardContent>
             </Card>
             <Card className="border-0 bg-gradient-to-br from-orange-50 to-orange-100">
               <CardContent className="px-3 py-2">
-                <p className="mb-0.5 text-xs text-orange-600">Streak</p>
-                <p className="text-lg font-bold text-orange-900">{stats.currentStreak} 🔥</p>
+                <p className="mb-0.5 label-12 text-orange-600">Streak</p>
+                <p className="stat-18 font-bold text-orange-900">{stats.currentStreak} 🔥</p>
               </CardContent>
             </Card>
             <Button
@@ -161,8 +161,8 @@ export default function HomeScreen({
               className="h-auto rounded-xl border-0 bg-gradient-to-br from-purple-50 to-purple-100 px-3 py-2 text-left hover:bg-gradient-to-br"
             >
               <span>
-                <p className="mb-0.5 text-xs text-purple-600">{energy ? 'Energy' : 'D-Day'}</p>
-                <p className="text-lg font-bold text-purple-900">{energy ? `${energy}/5` : getDDay()}</p>
+                <p className="mb-0.5 label-12 text-purple-600">{energy ? 'Energy' : 'D-Day'}</p>
+                <p className="stat-18 font-bold text-purple-900">{energy ? `${energy}/5` : getDDay()}</p>
               </span>
             </Button>
           </div>
@@ -221,7 +221,7 @@ export default function HomeScreen({
             <Button
               onClick={isAiEnabled && onRegenerateQuests ? onRegenerateQuests : undefined}
               variant="link"
-              className="h-auto p-0 text-sm font-semibold text-blue-600"
+              className="h-auto p-0 body-14 font-semibold text-blue-600"
             >
               + 새로고침
             </Button>
@@ -231,7 +231,7 @@ export default function HomeScreen({
             <Card className="rounded-2xl border-gray-200 bg-white">
               <CardContent className="flex flex-col items-center p-6">
                 <div className="mb-3 h-8 w-8 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
-                <p className="text-sm text-gray-500">AI가 퀘스트를 생성하고 있어요...</p>
+                <p className="body-14 text-gray-500">AI가 퀘스트를 생성하고 있어요...</p>
               </CardContent>
             </Card>
           ) : (

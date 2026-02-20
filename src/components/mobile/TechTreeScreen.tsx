@@ -388,9 +388,9 @@ export default function TechTreeScreen({ profile, techTree: initialTechTree, onT
                           quest.status === 'in_progress' ? 'bg-amber-400' : 'bg-gray-200'
                         }`}>
                           {quest.status === 'completed' ? (
-                            <span className="text-white text-11 font-bold">✓</span>
+                            <span className="caption-11 font-bold text-white">✓</span>
                           ) : quest.status === 'in_progress' ? (
-                            <span className="text-white text-11">●</span>
+                            <span className="caption-11 text-white">●</span>
                           ) : (
                             <Lock className="w-2.5 h-2.5 text-gray-400" />
                           )}
