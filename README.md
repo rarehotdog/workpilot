@@ -56,6 +56,19 @@ CI 게이트:
 npm run verify:ci
 ```
 
+프로덕션 API 스모크(수동):
+```bash
+WORKPILOT_BASE_URL=https://workpilot-lemon.vercel.app node scripts/prod-smoke.mjs
+```
+
+## CI / 운영 자동화
+- GitHub Actions `CI` (`.github/workflows/ci.yml`)
+  - 트리거: `pull_request(main)`, `push(main)`
+  - 실행: `npm ci` → `npm run verify:ci`
+- GitHub Actions `Production Smoke` (`.github/workflows/prod-smoke.yml`)
+  - 트리거: `workflow_dispatch`
+  - 실행: `node scripts/prod-smoke.mjs` (기본 대상: `https://workpilot-lemon.vercel.app`)
+
 ## 환경 변수
 `.env.local` 파일 생성:
 ```bash
