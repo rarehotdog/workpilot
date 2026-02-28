@@ -4,6 +4,7 @@ export type StorageMode = 'supabase' | 'memory-fallback';
 
 export type StoreContext = {
   requestId?: string;
+  storageModeHint?: StorageMode;
 };
 
 export type CommitRunInput = {

@@ -35,10 +35,20 @@ function statusText(status: RunnerStepStatus): string {
   return '대기';
 }
 
+function formatDateLabel(dateIso: string): string {
+  const date = new Date(dateIso);
+  return new Intl.DateTimeFormat('ko-KR', {
+    dateStyle: 'medium',
+    timeStyle: 'short'
+  }).format(date);
+}
+
 export function RunnerPage({ pilotId }: { pilotId: string }) {
   const [pilot, setPilot] = useState<Pilot | null>(null);
   const [logs, setLogs] = useState<RunLog[]>([]);
+  const [selectedLogId, setSelectedLogId] = useState<string | null>(null);
   const [values, setValues] = useState<Record<string, string>>({});
+  const [pendingRunValues, setPendingRunValues] = useState<Record<string, string> | null>(null);
 
   const [output, setOutput] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -65,6 +75,7 @@ export function RunnerPage({ pilotId }: { pilotId: string }) {
 
         setPilot(data.pilot);
         setLogs(data.runLogsLast3 ?? []);
+        setSelectedLogId(data.runLogsLast3?.[0]?.id ?? null);
         setStatuses(createInitialStatuses(data.pilot.steps.length));
         setSelectedStepId(data.pilot.steps[0]?.id ?? null);
         setShowValidation(false);
@@ -118,6 +129,19 @@ export function RunnerPage({ pilotId }: { pilotId: string }) {
     }
   }, [draftStorageKey, pilot, values]);
 
+  useEffect(() => {
+    if (!logs.length) {
+      setSelectedLogId(null);
+      return;
+    }
+
+    if (selectedLogId && logs.some((log) => log.id === selectedLogId)) {
+      return;
+    }
+
+    setSelectedLogId(logs[0].id);
+  }, [logs, selectedLogId]);
+
   const firstApprovalStep = useMemo(() => {
     if (!pilot) return -1;
     return pilot.steps.findIndex((step) => step.requiresApproval);
@@ -127,6 +151,11 @@ export function RunnerPage({ pilotId }: { pilotId: string }) {
     if (!pilot || !selectedStepId) return null;
     return pilot.steps.find((step) => step.id === selectedStepId) ?? null;
   }, [pilot, selectedStepId]);
+
+  const selectedLog = useMemo(() => {
+    if (!selectedLogId) return null;
+    return logs.find((log) => log.id === selectedLogId) ?? null;
+  }, [logs, selectedLogId]);
 
   const selectedStepStatus = useMemo(() => {
     if (!pilot || !selectedStep) return 'idle';
@@ -146,12 +175,26 @@ export function RunnerPage({ pilotId }: { pilotId: string }) {
 
   const requiredMissingSet = useMemo(() => new Set(requiredMissingKeys), [requiredMissingKeys]);
 
-  function validateBeforeRun(): boolean {
-    if (!pilot) return false;
-    if (requiredMissingKeys.length === 0) return true;
+  function normalizeValues(nextValues: Record<string, string>): Record<string, string> {
+    if (!pilot) return {};
 
-    const missingLabels = pilot.inputs
-      .filter((field) => requiredMissingSet.has(field.key))
+    const normalized: Record<string, string> = {};
+    pilot.inputs.forEach((input) => {
+      normalized[input.key] = nextValues[input.key] ?? '';
+    });
+    return normalized;
+  }
+
+  function validateBeforeRun(nextValues: Record<string, string>): boolean {
+    if (!pilot) return false;
+
+    const missingFields = pilot.inputs
+      .filter((field) => field.required)
+      .filter((field) => !nextValues[field.key]?.trim());
+
+    if (missingFields.length === 0) return true;
+
+    const missingLabels = missingFields
       .map((field) => field.label)
       .slice(0, 3)
       .join(', ');
@@ -163,11 +206,8 @@ export function RunnerPage({ pilotId }: { pilotId: string }) {
   function applyInputValues(nextValues: Record<string, string>) {
     if (!pilot) return;
 
-    const normalized: Record<string, string> = {};
-    pilot.inputs.forEach((input) => {
-      normalized[input.key] = nextValues[input.key] ?? '';
-    });
-    setValues(normalized);
+    setValues(normalizeValues(nextValues));
+    setShowValidation(false);
   }
 
   function handleUseLatestInputs() {
@@ -177,7 +217,23 @@ export function RunnerPage({ pilotId }: { pilotId: string }) {
     }
 
     applyInputValues(logs[0].inputValues);
+    setSelectedLogId(logs[0].id);
     toast.success('최근 실행 입력값을 불러왔습니다.');
+  }
+
+  function handleSelectLog(log: RunLog) {
+    if (!canRun) {
+      toast.error('실행 중에는 Audit Log를 불러올 수 없습니다.');
+      return;
+    }
+
+    setSelectedLogId(log.id);
+    applyInputValues(log.inputValues);
+    setOutput('');
+    setPhase('idle');
+    setApprovalIndex(null);
+    setStatuses(createInitialStatuses(pilot?.steps.length ?? 0));
+    toast.success('선택한 실행 입력을 불러왔습니다.');
   }
 
   function handleResetInputs() {
@@ -189,6 +245,7 @@ export function RunnerPage({ pilotId }: { pilotId: string }) {
     });
     setValues(resetValues);
     setShowValidation(false);
+    setPendingRunValues(null);
     toast.success('입력값을 초기화했습니다.');
   }
 
@@ -196,7 +253,7 @@ export function RunnerPage({ pilotId }: { pilotId: string }) {
     setStatuses((prev) => prev.map((item, idx) => (idx === index ? status : item)));
   }
 
-  async function executeRun() {
+  async function executeRun(runValues: Record<string, string>) {
     if (!pilot) return;
 
     const unfinishedIndices = pilot.steps
@@ -215,7 +272,7 @@ export function RunnerPage({ pilotId }: { pilotId: string }) {
         },
         body: JSON.stringify({
           pilotId: pilot.id,
-          values
+          values: runValues
         })
       });
 
@@ -224,9 +281,14 @@ export function RunnerPage({ pilotId }: { pilotId: string }) {
         creditsLeft?: number;
         runLog?: RunLog;
         error?: string;
+        missingRequiredKeys?: string[];
+        missingRequiredLabels?: string[];
       };
 
       if (!response.ok || !data.output) {
+        if (response.status === 400 && data.missingRequiredLabels?.length) {
+          throw new Error(`필수 입력 누락: ${data.missingRequiredLabels.join(', ')}`);
+        }
         throw new Error(data.error || '실행에 실패했습니다.');
       }
 
@@ -242,28 +304,37 @@ export function RunnerPage({ pilotId }: { pilotId: string }) {
       }
       if (data.runLog) {
         setLogs((prev) => [data.runLog!, ...prev].slice(0, 3));
+        setSelectedLogId(data.runLog.id);
       }
 
       setPhase('done');
+      setPendingRunValues(null);
       toast.success('실행이 완료되었습니다.');
     } catch (error) {
       const message = error instanceof Error ? error.message : '실행 중 오류가 발생했습니다.';
       setPhase('error');
+      setPendingRunValues(null);
       toast.error(message);
     }
   }
 
-  async function handleRun() {
+  async function handleRun(runValuesOverride?: Record<string, string>) {
     if (!pilot || !canRun) return;
     setShowValidation(true);
 
-    if (!validateBeforeRun()) {
+    const runValues = normalizeValues(runValuesOverride ?? values);
+    if (runValuesOverride) {
+      setValues(runValues);
+    }
+
+    if (!validateBeforeRun(runValues)) {
       return;
     }
 
     setOutput('');
     setPhase('running');
     setApprovalIndex(null);
+    setPendingRunValues(runValues);
     setStatuses(createInitialStatuses(pilot.steps.length));
 
     for (let i = 0; i < pilot.steps.length; i += 1) {
@@ -280,11 +351,11 @@ export function RunnerPage({ pilotId }: { pilotId: string }) {
       updateStatus(i, 'done');
     }
 
-    await executeRun();
+    await executeRun(runValues);
   }
 
   async function handleApprove() {
-    if (!pilot) return;
+    if (!pilot || !pendingRunValues) return;
 
     setPhase('running');
     if (approvalIndex !== null) {
@@ -292,7 +363,7 @@ export function RunnerPage({ pilotId }: { pilotId: string }) {
       await sleep(180);
     }
 
-    await executeRun();
+    await executeRun(pendingRunValues);
   }
 
   async function handleCopyOutput() {
@@ -362,11 +433,22 @@ export function RunnerPage({ pilotId }: { pilotId: string }) {
             ))}
 
             <div className="flex flex-wrap gap-2 pt-2">
-              <Button onClick={handleRun} disabled={!canRun}>
+              <Button onClick={() => void handleRun()} disabled={!canRun}>
                 Run
               </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  if (!selectedLog) return;
+                  void handleRun(selectedLog.inputValues);
+                }}
+                disabled={!canRun || !selectedLog}
+              >
+                재실행
+              </Button>
               {waitingApproval ? (
-                <Button variant="secondary" onClick={handleApprove}>
+                <Button variant="secondary" onClick={handleApprove} disabled={!pendingRunValues}>
                   Approve
                 </Button>
               ) : null}
@@ -456,6 +538,26 @@ export function RunnerPage({ pilotId }: { pilotId: string }) {
             <div className="markdown-output rounded-lg border border-border bg-muted p-4">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{output}</ReactMarkdown>
             </div>
+          ) : selectedLog ? (
+            <div className="space-y-3 rounded-lg border border-border bg-muted p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-medium">선택 실행 프리뷰</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void handleRun(selectedLog.inputValues)}
+                  disabled={!canRun}
+                >
+                  이 입력으로 재실행
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {formatDateLabel(selectedLog.createdAt)} / status: {selectedLog.status}
+                {typeof selectedLog.totalTokens === 'number' ? ` / tokens: ${selectedLog.totalTokens}` : ''}
+              </p>
+              <p className="whitespace-pre-wrap text-sm">{selectedLog.outputPreview}</p>
+            </div>
           ) : (
             <p className="text-sm text-muted-foreground">실행 후 결과가 이곳에 표시됩니다.</p>
           )}
@@ -465,7 +567,7 @@ export function RunnerPage({ pilotId }: { pilotId: string }) {
       <Separator />
 
       <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
-        <AuditLogList logs={logs} />
+        <AuditLogList logs={logs} selectedLogId={selectedLogId} onSelectLog={handleSelectLog} />
         <EditPanel
           pilot={pilot}
           onSaved={(next) => {

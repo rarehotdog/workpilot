@@ -9,11 +9,12 @@ Production 배포 추적은 아래 3개를 함께 기록합니다.
 
 ## Latest
 - Production URL: https://workpilot-lemon.vercel.app
-- Vercel URL: https://workpilot-begjrkyla-dydrnsj-5767s-projects.vercel.app
-- Inspect URL: https://vercel.com/dydrnsj-5767s-projects/workpilot/8u19jfeF6LGxT1JgtZbPi8xTUkYj
-- Commit SHA: `2855f29`
+- Vercel URL: https://workpilot-1mn4wfyvb-dydrnsj-5767s-projects.vercel.app
+- Inspect URL: https://vercel.com/dydrnsj-5767s-projects/workpilot/AMskWC6he3TECzYn4HncKzGWMk9j
+- Commit SHA: `5ef599b`
 - Timestamp: 2026-02-21
-- Health: `GET /api/health` => `{"ok":true,"storageMode":"memory-fallback","dbReachable":false,"openAIConfigured":false,...}`
+- Health: `GET /api/health` => `{"ok":true,"version":"0.1.0","storageMode":"supabase","dbReachable":true,"openAIConfigured":false}`
+- API Smoke: `POST /api/pilots` 200, `/api/run` required 누락 400, `/api/run` 성공 200, `GET /api/pilots/[id]` 로그/credits 확인 완료
 
 ## Notes
 - 이번 단계는 **Vercel Production 환경만** Supabase 키를 연결합니다.

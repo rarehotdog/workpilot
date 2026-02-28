@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-import { getPilot, getRunLogs, updatePilot } from '@/lib/store';
-import { getRequestId, jsonWithRequestId } from '@/lib/request';
+import { getPilot, getRunLogs, resolveStorageModeHint, updatePilot } from '@/lib/store';
+import { buildStoreContext, getRequestId, jsonWithRequestId } from '@/lib/request';
 import type { InputField, WorkflowStep } from '@/lib/types';
 
 const inputSchema = z.object({
@@ -99,28 +99,41 @@ function normalizeInputs(inputs: InputField[]): InputField[] {
 
 export async function GET(request: Request, context: { params: { id: string } }) {
   const requestId = getRequestId(request);
-  const pilot = await getPilot(context.params.id, { requestId });
-  if (!pilot) {
-    return jsonWithRequestId({ error: 'Pilot을 찾을 수 없습니다.' }, requestId, { status: 404 });
-  }
+  try {
+    const storageModeHint = await resolveStorageModeHint({ requestId });
+    const storeContext = buildStoreContext(requestId, storageModeHint);
 
-  return jsonWithRequestId(
-    {
-      pilot,
-      runLogsLast3: await getRunLogs(context.params.id, 3, { requestId }),
-    },
-    requestId,
-  );
+    const pilot = await getPilot(context.params.id, storeContext);
+    if (!pilot) {
+      return jsonWithRequestId({ error: 'Pilot을 찾을 수 없습니다.' }, requestId, { status: 404 });
+    }
+
+    return jsonWithRequestId(
+      {
+        pilot,
+        runLogsLast3: await getRunLogs(context.params.id, 3, storeContext),
+      },
+      requestId,
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Pilot 조회 중 오류가 발생했습니다.';
+    console.error(`[api/pilots/:id] requestId=${requestId} get_error=${message}`);
+    return jsonWithRequestId({ error: message }, requestId, { status: 500 });
+  }
 }
 
 export async function PATCH(request: Request, context: { params: { id: string } }) {
   const requestId = getRequestId(request);
-  const pilot = await getPilot(context.params.id, { requestId });
-  if (!pilot) {
-    return jsonWithRequestId({ error: 'Pilot을 찾을 수 없습니다.' }, requestId, { status: 404 });
-  }
 
   try {
+    const storageModeHint = await resolveStorageModeHint({ requestId });
+    const storeContext = buildStoreContext(requestId, storageModeHint);
+
+    const pilot = await getPilot(context.params.id, storeContext);
+    if (!pilot) {
+      return jsonWithRequestId({ error: 'Pilot을 찾을 수 없습니다.' }, requestId, { status: 404 });
+    }
+
     const body = await request.json();
     const parsed = patchBodySchema.safeParse(body);
 
@@ -146,7 +159,7 @@ export async function PATCH(request: Request, context: { params: { id: string } 
           version: prev.version + 1,
         };
       },
-      { requestId },
+      storeContext,
     );
 
     if (!updated) {

@@ -33,6 +33,18 @@ type BuilderTemplate = {
   captureNote?: string;
 };
 
+type BuilderInputSnapshot = {
+  name: string;
+  recordMode: RecordMode;
+  taskDescription: string;
+  prompt: string;
+  inputsCsv: string;
+  exampleInput: string;
+  exampleOutput: string;
+  captureNote: string;
+  captureFileSignature: string | null;
+};
+
 const builderTemplates: BuilderTemplate[] = [
   {
     id: 'weekly-report',
@@ -67,6 +79,15 @@ const builderTemplates: BuilderTemplate[] = [
   }
 ];
 
+function toCaptureFileSignature(file: File | null): string | null {
+  if (!file) return null;
+  return `${file.name}:${file.size}:${file.type}:${file.lastModified}`;
+}
+
+function serializeSnapshot(snapshot: BuilderInputSnapshot): string {
+  return JSON.stringify(snapshot);
+}
+
 export function BuilderPage() {
   const [name, setName] = useState('');
   const [recordMode, setRecordMode] = useState<RecordMode>('capture');
@@ -79,9 +100,31 @@ export function BuilderPage() {
   const [captureFile, setCaptureFile] = useState<File | null>(null);
 
   const [created, setCreated] = useState<CreatePilotResponse | null>(null);
+  const [compiledSnapshot, setCompiledSnapshot] = useState<string | null>(null);
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const currentInputSnapshot = useMemo(
+    () =>
+      serializeSnapshot({
+        name,
+        recordMode,
+        taskDescription,
+        prompt,
+        inputsCsv,
+        exampleInput,
+        exampleOutput,
+        captureNote,
+        captureFileSignature: toCaptureFileSignature(captureFile)
+      }),
+    [name, recordMode, taskDescription, prompt, inputsCsv, exampleInput, exampleOutput, captureNote, captureFile]
+  );
+
+  const isOutdated = useMemo(() => {
+    if (!created || !compiledSnapshot) return false;
+    return compiledSnapshot !== currentInputSnapshot;
+  }, [created, compiledSnapshot, currentInputSnapshot]);
 
   const absoluteShareUrl = useMemo(() => {
     if (!created) return '';
@@ -130,6 +173,7 @@ export function BuilderPage() {
     setCaptureNote('');
     setCaptureFile(null);
     setCreated(null);
+    setCompiledSnapshot(null);
     setSelectedStepId(null);
     toast.success('Builder 입력을 초기화했습니다.');
   }
@@ -137,6 +181,7 @@ export function BuilderPage() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsSubmitting(true);
+    const submitSnapshot = currentInputSnapshot;
 
     try {
       const formData = new FormData();
@@ -163,6 +208,7 @@ export function BuilderPage() {
       }
 
       setCreated(data as CreatePilotResponse);
+      setCompiledSnapshot(submitSnapshot);
       setSelectedStepId((data as CreatePilotResponse).pilot.steps[0]?.id ?? null);
       toast.success('워크플로우를 생성했습니다. 링크를 공유해 바로 실행하세요.');
     } catch (error) {
@@ -350,7 +396,13 @@ export function BuilderPage() {
                   <div className="flex items-center gap-2">
                     <h3 className="text-sm font-semibold">공유 링크</h3>
                     <Badge>{created.compileMode === 'openai' ? 'OpenAI compile' : 'Fallback compile'}</Badge>
+                    {isOutdated ? (
+                      <Badge className="border-amber-300/70 bg-amber-500/10 text-amber-200">재컴파일 필요</Badge>
+                    ) : null}
                   </div>
+                  {isOutdated ? (
+                    <p className="text-xs text-amber-200/90">입력이 변경되었습니다. 최신 스펙 반영을 위해 다시 Compile 해주세요.</p>
+                  ) : null}
                   <p className="break-all rounded-md border border-border bg-muted p-2 text-xs">{absoluteShareUrl}</p>
                   <Button type="button" size="sm" variant="secondary" onClick={handleCopyLink}>
                     링크 복사

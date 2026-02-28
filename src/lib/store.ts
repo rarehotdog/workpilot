@@ -43,12 +43,51 @@ function trackFallback(operation: string, error: unknown, context?: StoreContext
   console.warn(`[store] fallback to memory op=${operation}${requestSuffix} reason=${reason}`);
 }
 
+function trackFallbackReason(operation: string, reason: string, context?: StoreContext): void {
+  const state = getFallbackState();
+  state.lastReason = `${operation}:${reason}`;
+  state.lastAt = new Date().toISOString();
+
+  const requestSuffix = context?.requestId ? ` requestId=${context.requestId}` : '';
+  console.warn(`[store] fallback to memory op=${operation}${requestSuffix} reason=${reason}`);
+}
+
+export async function resolveStorageModeHint(context?: StoreContext): Promise<StorageMode> {
+  if (!supabaseStore.isConfigured()) {
+    return 'memory-fallback';
+  }
+
+  try {
+    const dbReachable = await supabaseStore.ping(context);
+    if (!dbReachable) {
+      trackFallbackReason('resolveStorageModeHint', 'SUPABASE_UNREACHABLE', context);
+      return 'memory-fallback';
+    }
+
+    return 'supabase';
+  } catch (error) {
+    trackFallback('resolveStorageModeHint', error, context);
+    return 'memory-fallback';
+  }
+}
+
 async function runWithFallback<T>(
   operation: string,
   context: StoreContext | undefined,
   supabaseOperation: () => Promise<T>,
   memoryOperation: () => Promise<T>,
 ): Promise<T> {
+  if (context?.storageModeHint === 'memory-fallback') {
+    return memoryOperation();
+  }
+
+  if (context?.storageModeHint === 'supabase') {
+    if (!supabaseStore.isConfigured()) {
+      throw new Error('SUPABASE_NOT_CONFIGURED');
+    }
+    return supabaseOperation();
+  }
+
   if (!supabaseStore.isConfigured()) {
     return memoryOperation();
   }

@@ -2,11 +2,20 @@ import { randomUUID } from 'crypto';
 
 import { NextResponse } from 'next/server';
 
+import type { StorageMode, StoreContext } from '@/lib/store-contract';
+
 export function getRequestId(request: Request): string {
   const headerRequestId = request.headers.get('x-request-id')?.trim();
   if (headerRequestId) return headerRequestId;
 
   return randomUUID();
+}
+
+export function buildStoreContext(requestId: string, storageModeHint?: StorageMode): StoreContext {
+  return {
+    requestId,
+    storageModeHint,
+  };
 }
 
 export function withRequestId(response: NextResponse, requestId: string): NextResponse {

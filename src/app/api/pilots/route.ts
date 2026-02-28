@@ -3,8 +3,8 @@ import { randomUUID } from 'crypto';
 import { z } from 'zod';
 
 import { buildDefaultName, compileWorkflow } from '@/lib/compile';
-import { savePilot } from '@/lib/store';
-import { getRequestId, jsonWithRequestId } from '@/lib/request';
+import { resolveStorageModeHint, savePilot } from '@/lib/store';
+import { buildStoreContext, getRequestId, jsonWithRequestId } from '@/lib/request';
 import type { Pilot, RecordMode } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -28,6 +28,8 @@ export async function POST(request: Request) {
   const requestId = getRequestId(request);
 
   try {
+    const storageModeHint = await resolveStorageModeHint({ requestId });
+    const storeContext = buildStoreContext(requestId, storageModeHint);
     const formData = await request.formData();
 
     const name = buildDefaultName(formValue(formData, 'name'));
@@ -85,7 +87,7 @@ export async function POST(request: Request) {
       createdAt
     };
 
-    await savePilot(pilot, { requestId });
+    await savePilot(pilot, storeContext);
 
     return jsonWithRequestId(
       {

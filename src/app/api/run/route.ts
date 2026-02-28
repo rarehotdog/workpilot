@@ -2,10 +2,10 @@ import { randomUUID } from 'crypto';
 
 import { z } from 'zod';
 
-import { jsonWithRequestId, getRequestId } from '@/lib/request';
+import { buildStoreContext, jsonWithRequestId, getRequestId } from '@/lib/request';
 import { cleanupRunLogsOlderThan90Days } from '@/lib/retention';
 import { runWorkflow } from '@/lib/run';
-import { commitRun, getPilot } from '@/lib/store';
+import { commitRun, getPilot, resolveStorageModeHint } from '@/lib/store';
 import type { RunLog } from '@/lib/types';
 
 const runSchema = z.object({
@@ -17,7 +17,10 @@ export async function POST(request: Request) {
   const requestId = getRequestId(request);
 
   try {
-    await cleanupRunLogsOlderThan90Days({ requestId });
+    const storageModeHint = await resolveStorageModeHint({ requestId });
+    const storeContext = buildStoreContext(requestId, storageModeHint);
+
+    await cleanupRunLogsOlderThan90Days(storeContext);
 
     const body = await request.json();
     const parsed = runSchema.safeParse(body);
@@ -30,9 +33,25 @@ export async function POST(request: Request) {
       );
     }
 
-    const pilot = await getPilot(parsed.data.pilotId, { requestId });
+    const pilot = await getPilot(parsed.data.pilotId, storeContext);
     if (!pilot) {
       return jsonWithRequestId({ error: 'Pilot을 찾을 수 없습니다.' }, requestId, { status: 404 });
+    }
+
+    const missingRequiredFields = pilot.inputs
+      .filter((input) => input.required)
+      .filter((input) => !(parsed.data.values[input.key] ?? '').trim());
+
+    if (missingRequiredFields.length > 0) {
+      return jsonWithRequestId(
+        {
+          error: '필수 입력값이 누락되었습니다.',
+          missingRequiredKeys: missingRequiredFields.map((field) => field.key),
+          missingRequiredLabels: missingRequiredFields.map((field) => field.label),
+        },
+        requestId,
+        { status: 400 },
+      );
     }
 
     if (pilot.credits <= 0) {
@@ -60,7 +79,7 @@ export async function POST(request: Request) {
           pilotId: pilot.id,
           log: runLog,
         },
-        { requestId },
+        storeContext,
       );
 
       if (commitResult.status === 'not_found') {
@@ -98,7 +117,7 @@ export async function POST(request: Request) {
           pilotId: pilot.id,
           log: runLog,
         },
-        { requestId },
+        storeContext,
       );
 
       if (commitResult.status === 'not_found') {

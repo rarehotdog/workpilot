@@ -44,6 +44,18 @@ npm install
 npm run dev
 ```
 
+정적 검증:
+```bash
+npm run verify
+```
+
+타입체크는 `tsconfig.typecheck.json` 기준으로 실행됩니다.
+
+CI 게이트:
+```bash
+npm run verify:ci
+```
+
 ## 환경 변수
 `.env.local` 파일 생성:
 ```bash
@@ -76,6 +88,7 @@ SUPABASE_SERVICE_ROLE_KEY=
 - `POST /api/run`
   - 입력: `{ pilotId, values }`
   - 반환: `{ output, creditsLeft, totalTokens?, runLog, mode }`
+  - 필수 입력 누락(400): `{ error, missingRequiredKeys, missingRequiredLabels }`
 - `PATCH /api/pilots/[id]`
   - 입력: `{ oneLiner?, inputs?, steps? }`
   - 반환: `{ pilot }` (version 증가)
@@ -93,12 +106,12 @@ SUPABASE_SERVICE_ROLE_KEY=
 - Preview/Development 환경은 DB 미연결을 기본값으로 둡니다.
 
 ## 수동 검증 체크리스트
-1. `npm run lint`
-2. `npm run typecheck`
-3. `npm run build`
-4. `GET /api/health`에서 `storageMode`/`dbReachable` 확인
-5. Capture/Describe/Prompt 각각 `POST /api/pilots` 성공
-6. `POST /api/run` 성공 시 credits 감소 + run log 저장 확인
+1. `npm run verify`
+2. `npm run verify:ci`
+3. `GET /api/health`에서 `storageMode`/`dbReachable` 확인
+4. Capture/Describe/Prompt 각각 `POST /api/pilots` 성공
+5. `POST /api/run` 성공 시 credits 감소 + run log 저장 확인
+6. `/api/run` required 누락 시 400 + 누락 필드 목록 확인
 7. credits 0에서 `POST /api/run`이 402 반환
 8. `PATCH /api/pilots/[id]` 성공 시 `version` 증가
 
